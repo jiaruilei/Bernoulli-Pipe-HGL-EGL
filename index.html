@@ -61,7 +61,36 @@
   .chip{background:#0e1430; border:1px solid #2a3a68; color:#e9f3ff; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
 
+
+  /* MathJax tune for dark coach area */
+  .coachLog .mjx-container { font-size: 1em; line-height: 1.25; }
+  .coachMsg.coach, .coachMsg.user { color: inherit; }
+
 </style>
+
+<!-- MathJax for LaTeX rendering in chat -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$','$$'], ['\\[','\\]']],
+      processEscapes: true
+    },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    startup: {
+      typeset: false,
+      pageReady: () => {
+        if (window.__mjxQueue && window.__mjxQueue.length) {
+          const q = window.__mjxQueue; window.__mjxQueue = [];
+          return MathJax.typesetPromise(q);
+        }
+        return MathJax.typesetPromise();
+      }
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
 </head>
 <body>
 <div class="wrap">
@@ -223,7 +252,18 @@
 
 <script>
 (function(){
-  const $ = id => document.getElementById(id);
+  
+  // -- MathJax typeset helper for dynamic chat --
+  function typesetEl(el){
+    try{
+      if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise([el]).catch(()=>{});
+      } else {
+        (window.__mjxQueue = window.__mjxQueue || []).push(el);
+      }
+    }catch(e){ /* no-op */ }
+  }
+const $ = id => document.getElementById(id);
 
 
   // --- AI Coach helpers ---
@@ -234,6 +274,7 @@
     div.innerHTML = 'Coach: ' + text;
     coachLog().appendChild(div);
     coachLog().scrollTop = coachLog().scrollHeight;
+    typesetEl(div);
   }
   function userSay(text){
     const div = document.createElement('div');
@@ -241,6 +282,7 @@
     div.textContent = 'You: ' + text;
     coachLog().appendChild(div);
     coachLog().scrollTop = coachLog().scrollHeight;
+    typesetEl(div);
   }
   function fmt(x,n=2){ return Number(x).toFixed(n); }
 
@@ -770,6 +812,7 @@
       const reply = await sendChatGPT(q);
       const log = document.getElementById('coachLog');
       if (log && log.lastChild) log.lastChild.innerHTML = 'Coach: ' + reply;
+      typesetEl(log.lastChild);
     }catch(err){
       const log = document.getElementById('coachLog');
       if(log && log.lastChild) log.lastChild.innerHTML = 'Coach: (proxy error, switching to built-in helper)';
