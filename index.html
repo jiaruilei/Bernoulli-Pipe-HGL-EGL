@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bernoulli Pipe — Glass (Pressure • Velocity • Elevation)</title>
+<style>
+  :root{
+    --bg:#0a0f1e; --panel:#0f1630; --ink:#f4f6ff; --muted:#b9c3df;
+    --accent:#7bdfff; --good:#7bf2a1; --warn:#ffd166; --bad:#ff7878;
+    --pCol:#59a6ff; --vCol:#7bf2a1; --zCol:#ffd166;
+    --pipeA:#2b5ea8; --pipeB:#173b74; --pipeC:#0d2a57;
+  }
+  html,body{height:100%; margin:0; background:radial-gradient(1200px 600px at 20% -10%, #1a2a58 0%, #0a0f1e 60%); color:var(--ink); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1180px; margin:0 auto; padding:20px}
+  h1{font-size:28px; margin:8px 0 2px}
+  .sub{color:var(--muted); font-size:16px; margin-bottom:16px}
+  .grid{display:grid; grid-template-columns: 360px 1fr; gap:16px; align-items:start}
+  .card{background:linear-gradient(180deg,#121a3a,#0f1630); border:1px solid #213259; border-radius:16px; padding:14px; box-shadow:0 14px 30px rgba(0,0,0,.28)}
+  .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#10183b; color:var(--muted); font-size:14px; border:1px solid #223154}
+  .row{display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; margin:8px 0}
+  .row label{font-size:16px; color:var(--muted)}
+  .row input[type=number]{width:90px; background:#0e1430; color:var(--ink); border:1px solid #2a3a68; border-radius:8px; padding:6px 8px; font-size:16px}
+  .row input[type=range]{width:100%}
+  button{background:linear-gradient(180deg,#1a3e61,#132f4b); border:1px solid #2a4f7f; color:#e9f3ff; padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600; font-size:15px}
+  button.secondary{background:#0e1430; border-color:#2a3a68}
+  button:active{transform:translateY(1px)}
+  .canvasWrap{position:relative; height:430px; background:linear-gradient(180deg,#0d1330,#0a0f1e 70%); border:1px solid #213259; border-radius:16px; overflow:hidden}
+  .legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px}
+  .legend .key{display:flex; align-items:center; gap:6px; font-size:14px; color:var(--muted)}
+  .swatch{width:12px; height:12px; border-radius:3px; display:inline-block}
+  .sP{background:var(--pCol)} .sV{background:var(--vCol)} .sZ{background:var(--zCol)}
+  .kpi{display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-top:10px}
+  .kpi .box{background:#0e1430; border:1px solid #223154; border-radius:12px; padding:10px}
+  .kpi .t{font-size:14px; color:var(--muted)}
+  .kpi .v{font-size:20px; margin-top:4px}
+  .trio{display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-top:10px}
+  .tile{background:#0e1430; border:1px solid #223154; border-radius:12px; padding:10px}
+  .tile .ttl{font-size:14px; color:var(--muted)}
+  .tile .val{font-size:20px; margin-top:4px}
+  .sectionHeader{display:flex; justify-content:space-between; align-items:center; margin-top:12px}
+  .quiz{display:grid; grid-template-columns:1fr; gap:8px}
+  .choices{display:grid; grid-template-columns: 1fr 1fr; gap:8px}
+  .choices label{display:flex; align-items:center; gap:8px; background:#0e1430; border:1px solid #223154; border-radius:12px; padding:10px; cursor:pointer; font-size:15px}
+  .msg{font-size:15px; color:var(--muted); margin-top:6px}
+  .right{color:var(--good)} .wrong{color:var(--bad)}
+  .small{font-size:14px}
+  .row .select{width:100%; background:#0e1430; color:var(--ink); border:1px solid #2a3a68; border-radius:8px; padding:6px 8px}
+
+  /* AI Coach styles */
+  .coachCard{position:relative; background:linear-gradient(180deg,#121a3a,#0f1630); border:1px solid #213259; border-radius:16px; padding:12px; margin-top:12px}
+  .coachHeader{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+  .coachHeader .title{display:flex; align-items:center; gap:8px; font-weight:700}
+  .coachHeader button{font-size:12px; padding:6px 8px}
+  .coachLog{height:180px; overflow:auto; background:#0e1430; border:1px solid #223154; border-radius:12px; padding:10px; font-size:14px}
+  .coachMsg{margin-bottom:8px}
+  .coachMsg.coach{color:#cfe6ff}
+  .coachMsg.user{color:#ffe6c9}
+  .coachInput{display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:8px}
+  .coachChips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .chip{background:#0e1430; border:1px solid #2a3a68; color:#e9f3ff; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bernoulli Pipe (Pressure • Velocity • Elevation)</h1>
+  <div class="sub">
+    A pipe flow with luminous streaks (brighter = faster). Focus is on p, v, z and the Bernoulli balance between two sections.
+  </div>
+
+  <div class="grid">
+    <!-- Controls -->
+    <div class="card" id="controls">
+      <div class="pill">Explore Mode</div>
+
+      <div class="row">
+        <label>Fluid density ρ (kg/m³)</label>
+        <input id="rho" type="number" step="1" min="500" max="2000" value="1000">
+      </div>
+      <div class="row">
+        <label>Gravity g (m/s²)</label>
+        <input id="g" type="number" step="0.01" min="1" max="20" value="9.81">
+      </div>
+
+      <hr style="border:0;border-top:1px dashed #223154;margin:10px 0">
+
+      <div class="row">
+        <label>Upstream diameter D₁ (m)</label>
+        <input id="D1n" type="number" step="0.005" min="0.03" max="0.5" value="0.10">
+      </div>
+      <input id="D1" type="range" min="0.05" max="0.30" step="0.005" value="0.10">
+
+      <div class="row">
+        <label>Downstream diameter D₂ (m)</label>
+        <input id="D2n" type="number" step="0.005" min="0.02" max="0.5" value="0.05">
+      </div>
+      <input id="D2" type="range" min="0.03" max="0.20" step="0.005" value="0.05">
+
+      <div class="row">
+        <label>Upstream speed v₁ (m/s)</label>
+        <input id="v1n" type="number" step="0.1" min="0.1" max="6" value="1.0">
+      </div>
+      <input id="v1" type="range" min="0.2" max="5" step="0.1" value="1.0">
+
+      <div class="row">
+        <label>Upstream gauge pressure p₁ (kPa)</label>
+        <input id="p1n" type="number" step="1" min="0" max="500" value="180">
+      </div>
+      <input id="p1" type="range" min="0" max="300" step="1" value="180">
+
+      <div class="row">
+        <label>Elevation z₂ relative to z₁ (m)</label>
+        <input id="z2n" type="number" step="0.1" min="-10" max="10" value="2">
+      </div>
+      <input id="z2" type="range" min="-5" max="5" step="0.1" value="2">
+
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button id="reset" class="secondary">Reset</button>
+        <button id="startQuiz">Start Quiz</button>
+      </div>
+
+      <div class="small" style="color:var(--muted); margin-top:10px">
+        Tip: Raising z₂ trades pressure for elevation.
+      </div>
+    </div>
+
+    <!-- Visuals + KPIs -->
+    <div class="card">
+      <div class="canvasWrap"><canvas id="viz" width="860" height="430"></canvas></div>
+
+      <div class="legend">
+        <span class="key"><span class="swatch sP"></span>Pressure p</span>
+        <span class="key"><span class="swatch sV"></span>Velocity v</span>
+        <span class="key"><span class="swatch sZ"></span>Elevation z</span>
+        <span class="key"><span class="swatch" style="background:#ff6b6b"></span>EGL</span>
+<span class="key"><span class="swatch" style="background:#7bdfff"></span>HGL</span>
+<span class="key" style="margin-left:auto;color:#9ddcff">Flow streak color = local speed</span>
+      </div>
+
+      <div class="kpi">
+        <div class="box"><div class="t">Downstream speed v₂</div><div class="v" id="k_v2">—</div></div>
+        <div class="box"><div class="t">Downstream gauge pressure p₂</div><div class="v" id="k_p2">—</div></div>
+        <div class="box"><div class="t">Flow rate Q</div><div class="v" id="k_Q">—</div></div>
+      </div>
+      <div class="kpi" style="margin-top:10px">
+        <div class="box"><div class="t">Manometer Δh (p₁−p₂)</div><div class="v" id="k_mano">—</div></div>
+        <div class="box"><div class="t">Pitot at section 2 (Δhₚ)</div><div class="v" id="k_pitot">—</div></div>
+        <div class="box"><div class="t">Bernoulli check |Δ( p/ρg + v²/2g + z )|</div><div class="v" id="k_bal">—</div></div>
+      </div>
+
+      <div class="sectionHeader"><div class="pill">Section 1</div><div class="small" style="color:var(--muted)">z₁ = 0 m (reference)</div></div>
+      <div class="trio">
+        <div class="tile"><div class="ttl">Pressure p₁</div><div class="val" id="s1_p">—</div></div>
+        <div class="tile"><div class="ttl">Velocity v₁</div><div class="val" id="s1_v">—</div></div>
+        <div class="tile"><div class="ttl">Elevation z₁</div><div class="val" id="s1_z">—</div></div>
+      </div>
+
+      <div class="sectionHeader"><div class="pill">Section 2</div><div class="small" style="color:var(--muted)"><span id="z2label"></span></div></div>
+      <div class="trio">
+        <div class="tile"><div class="ttl">Pressure p₂</div><div class="val" id="s2_p">—</div></div>
+        <div class="tile"><div class="ttl">Velocity v₂</div><div class="val" id="s2_v">—</div></div>
+        <div class="tile"><div class="ttl">Elevation z₂</div><div class="val" id="s2_z">—</div></div>
+      </div>
+
+
+      <!-- AI Coach -->
+      <div class="coachCard" id="coachCard">
+        <div class="coachHeader">
+          <div class="title">🧠 AI Coach <span class="pill">concept helper</span></div>
+          <div style="display:flex; gap:6px">
+            <button id="coachExplain">Explain this scene</button>
+            <button id="coachHint" class="secondary">Give me a hint</button>
+          </div>
+        </div>
+        
+        <div id="coachCfg" style="margin:6px 0 8px; display:grid; gap:6px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cfe6ff;font-size:13px">
+            <input id="useChatGPT" type="checkbox"> Use ChatGPT for replies (via proxy)
+          </label>
+          <div id="chatgptConfig" style="display:none; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
+            <input id="chatEndpoint" placeholder="/api/chat" value="/api/chat"
+                   style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
+            <input id="chatModel" value="gpt-4o-mini"
+                   style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
+            <input id="chatTemp" type="number" step="0.1" min="0" max="2" value="0.2"
+                   style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
+          </div>
+        </div>
+        <div class="coachLog" id="coachLog"></div>
+
+        <div class="coachChips">
+          <div class="chip" data-q="How do I increase v2?">How do I increase v₂?</div>
+          <div class="chip" data-q="Why did p2 drop?">Why did p₂ drop?</div>
+          <div class="chip" data-q="Walk me through Bernoulli">Walk me through Bernoulli</div>
+          <div class="chip" data-q="Check: v2= ?">Check: v₂ = ?</div>
+          <div class="chip" data-q="Challenge me">Challenge me</div>
+        </div>
+        <div class="coachInput">
+          <input id="coachQ" type="text" placeholder="Ask a question (e.g., ‘Why does pressure drop when the pipe narrows?’)" />
+          <button id="coachSend">Ask</button>
+        </div>
+      </div>
+
+      <!-- Quiz area -->
+      <div class="card" id="quizCard" style="margin-top:12px; display:none">
+        <div class="pill">Quiz Mode</div>
+        <div class="quiz">
+          <div id="qtext" style="font-weight:600"></div>
+          <div class="choices" id="choices"></div>
+          <div style="display:flex; gap:8px">
+            <button id="submit">Submit</button>
+            <button id="next" class="secondary">Next</button>
+            <div class="pill" id="score">Score: 0/0</div>
+          </div>
+          <div id="feedback" class="msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+
+  // --- AI Coach helpers ---
+  const coachLog = () => document.getElementById('coachLog');
+  function coachSay(text){
+    const div = document.createElement('div');
+    div.className = 'coachMsg coach';
+    div.innerHTML = 'Coach: ' + text;
+    coachLog().appendChild(div);
+    coachLog().scrollTop = coachLog().scrollHeight;
+  }
+  function userSay(text){
+    const div = document.createElement('div');
+    div.className = 'coachMsg user';
+    div.textContent = 'You: ' + text;
+    coachLog().appendChild(div);
+    coachLog().scrollTop = coachLog().scrollHeight;
+  }
+  function fmt(x,n=2){ return Number(x).toFixed(n); }
+
+  function explainScene(){
+    const R = compute();
+    const {rho,g,D1,D2,v1,p1kPa,z1,z2} = state;
+    const p2kPa = R.p2/1000;
+    const lines = [];
+    lines.push(`Continuity: A₁=πD₁²/4=${fmt(Math.PI*D1*D1/4,4)} m², A₂=${fmt(Math.PI*D2*D2/4,4)} m² → v₂=v₁·A₁/A₂=${fmt(v1)}·${fmt((Math.PI*D1*D1/4)/(Math.PI*D2*D2/4),2)}=${fmt(R.v2)} m/s.`);
+    lines.push(`Bernoulli (gauge): p₁/ρg + v₁²/2g + z₁ = p₂/ρg + v₂²/2g + z₂.`);
+    lines.push(`Numbers: p₁=${fmt(p1kPa)} kPa, p₂=${fmt(p2kPa)} kPa, v₁=${fmt(v1)} m/s, v₂=${fmt(R.v2)} m/s, z₂=${fmt(z2)} m.`);
+    const dp = p1kPa - p2kPa;
+    const vtrend = (R.v2>v1)? 'increases' : (R.v2<v1?'decreases':'stays similar');
+    const reason = [];
+    if (D2 < D1) reason.push('narrower D₂ → higher v₂ (continuity)');
+    if (z2 > z1) reason.push('higher z₂ → some head goes to elevation');
+    reason.push('to conserve total head (no losses), pressure trades with kinetic/elevation');
+    lines.push(`Interpretation: D₂ vs D₁ → v₂ ${vtrend}; Δp = p₁−p₂ = ${fmt(dp)} kPa. Because ${reason.join(', ')}.`);
+    coachSay(lines.join('<br>'));
+  }
+
+  function hint(){
+    const {D1,D2,z2,v1} = state;
+    const tips = [];
+    if (D2 < D1) tips.push('Narrowing (D₂<D₁) accelerates flow, increasing v₂.');
+    else tips.push('Widening (D₂≥D₁) decelerates flow, reducing v₂.');
+    if (z2 > 0) tips.push('A positive z₂ consumes head for elevation, lowering p₂.');
+    if (v1 < 0.8) tips.push('Increasing v₁ increases both Q and v₂ (via continuity).');
+    tips.push('At fixed ρ and g, Bernoulli trades pressure head with velocity and elevation.');
+    coachSay(tips.join(' '));
+  }
+
+  function coachCheck(expr){
+    // Recognize "v2= X", "p2= X kPa"
+    const R = compute();
+    const txt = expr.replace(/\s+/g,'').toLowerCase();
+    let m = txt.match(/v2=([0-9]*\.?[0-9]+)/);
+    if (m){
+      const user = parseFloat(m[1]), truth = R.v2;
+      const ok = Math.abs((user-truth)/truth) < 0.03;
+      coachSay(ok ? `✅ Correct: v₂ = ${fmt(truth)} m/s (within 3%).` :
+                     `❌ Not quite. v₂ should be ${fmt(truth)} m/s.`);
+      return;
+    }
+    m = txt.match(/p2=?([0-9]*\.?[0-9]+)/);
+    if (m){
+      const user = parseFloat(m[1]), truth = R.p2/1000;
+      const ok = Math.abs((user-truth)/Math.max(1,truth)) < 0.03;
+      coachSay(ok ? `✅ Correct: p₂ ≈ ${fmt(truth,1)} kPa.` :
+                     `❌ Not quite. p₂ ≈ ${fmt(truth,1)} kPa.`);
+      return;
+    }
+    coachSay("Try 'Check: v2=1.5' or 'Check: p2=140'.");
+  }
+
+  function coachHandle(q){
+    const R = compute();
+    const {D1,D2,v1,p1kPa,z2} = state;
+    const ql = q.trim().toLowerCase();
+
+    if (!q.trim()){ coachSay('Ask me about pressure, velocity, elevation, continuity, or Bernoulli.'); return; }
+    if (ql.includes('explain')){ explainScene(); return; }
+    if (ql.includes('hint')){ hint(); return; }
+    if (ql.startsWith('check:') || ql.startsWith('check')){ coachCheck(q.replace(/check:?/i,'')); return; }
+    if (ql.includes('increase v2') || ql.includes('increase v₂') || ql.includes('make v2')){
+      coachSay('To increase v₂: decrease D₂ (narrow outlet), increase v₁, or both. Trade-offs: higher v₂ typically lowers p₂ (Bernoulli).');
+      return;
+    }
+    if (ql.includes('why') && (ql.includes('p2') || ql.includes('p₂') || ql.includes('pressure'))){
+      const cause = [];
+      if (D2 < D1) cause.push('D₂<D₁ → v₂ increases → pressure drops');
+      if (z2 > 0) cause.push('z₂>0 → some head goes to elevation');
+      coachSay(`p₂ is lower because ${cause.length?cause.join(' and '):'kinetic/elevation terms increased'}. Bernoulli conserves total head.`);
+      return;
+    }
+    if (ql.includes('bernoulli')){
+      coachSay('Bernoulli: p/ρg + v²/2g + z = constant (no losses). If v increases or z rises, p must drop to keep the sum constant.');
+      return;
+    }
+    if (ql.includes('challenge')){
+      const choices = [
+        `Given D₁=${fmt(D1,3)} m, D₂=${fmt(D2,3)} m, v₁=${fmt(v1)} m/s, find v₂.`,
+        `With p₁=${fmt(p1kPa)} kPa, v₁=${fmt(v1)} m/s, D₁=${fmt(D1,3)} m, D₂=${fmt(D2,3)} m, z₂=${fmt(z2)} m, compute p₂ (kPa).`,
+      ];
+      coachSay('Try this: ' + choices[Math.floor(Math.random()*choices.length)] + ' Use continuity and Bernoulli.');
+      return;
+    }
+    // Default
+    explainScene();
+  }
+
+  const state = {
+    rho:1000, g:9.81, D1:0.10, D2:0.05, v1:1.0, p1kPa:180, z1:0.0, z2:2.0,
+    style:'glass', // fixed to glass (closed top)
+    inQuiz:false, score:0, seen:0, current:{}, selection:null,
+    t:0
+  };
+
+  // Bind
+  const link=(slider, numeric, key)=>{
+    const s=$(slider), n=$(numeric);
+    const set=(val,src)=>{ state[key]=+val; (src==='s'? n:s).value=val; computeAndRender(); };
+    s.addEventListener('input', e=> set(e.target.value,'s'));
+    n.addEventListener('input', e=> set(e.target.value,'n'));
+  };
+  link('D1','D1n','D1'); link('D2','D2n','D2'); link('v1','v1n','v1'); link('p1','p1n','p1kPa'); link('z2','z2n','z2');
+  $('rho').addEventListener('input', e=>{ state.rho=+e.target.value; computeAndRender(); });
+  $('g').addEventListener('input', e=>{ state.g=+e.target.value; computeAndRender(); });
+
+    $('reset').addEventListener('click', ()=>{
+    const set=(id,val)=>{ $(id).value=val; $(id+'n')?.value && ($(id+'n').value=val); };
+    $('rho').value=1000; $('g').value=9.81;
+    set('D1',0.10); set('D2',0.05); set('v1',1.0); set('p1',180); set('z2',2.0);
+    state.score=0; state.seen=0; updateScore(); stopQuiz(); computeAndRender();
+  });
+
+  $('startQuiz').addEventListener('click', ()=> state.inQuiz? stopQuiz() : startQuiz());
+  function startQuiz(){ state.inQuiz=true; $('quizCard').style.display='block'; nextQuestion(); }
+  function stopQuiz(){ state.inQuiz=false; $('quizCard').style.display='none'; }
+  function updateScore(){ $('score').textContent=`Score: ${state.score}/${state.seen}`; }
+
+  function nextQuestion(){
+    state.seen++; updateScore();
+    const rnd=(a,b,s=0.01)=> Math.round((a+Math.random()*(b-a))/s)*s;
+    state.D1=rnd(0.06,0.20,0.005); state.D2=rnd(0.03,0.16,0.005);
+    state.v1=rnd(0.4,4.0,0.1); state.p1kPa=rnd(90,240,1); state.z2=rnd(-3,3,0.1);
+    ['D1','D2','v1','p1','z2'].forEach(id=>{ $(id).value = (id==='p1'?state.p1kPa:state[id]); $(id+'n')?.value && ($(id+'n').value=$(id).value); });
+    const R=compute();
+    const askType = ['v2','p2kPa','dhMano','dhPitot'][Math.floor(Math.random()*4)];
+    let q='', correct=0, fmt=x=>x;
+    if(askType==='v2'){ q=`Given D₁=${state.D1.toFixed(3)} m, D₂=${state.D2.toFixed(3)} m, v₁=${state.v1.toFixed(2)} m/s, what is v₂?`;
+      correct=R.v2; fmt=x=>x.toFixed(2)+' m/s';
+    }else if(askType==='p2kPa'){ q=`With p₁=${state.p1kPa.toFixed(0)} kPa (g), v₁=${state.v1.toFixed(2)} m/s, D₁=${state.D1.toFixed(3)} m, D₂=${state.D2.toFixed(3)} m, and z₂=${state.z2.toFixed(2)} m, what is p₂ (gauge)?`;
+      correct=R.p2/1000; fmt=x=>x.toFixed(0)+' kPa';
+    }else if(askType==='dhMano'){ q=`What is the manometer reading Δh (water) between taps at 1 and 2?`;
+      correct=R.dhMano; fmt=x=>x.toFixed(2)+' m';
+    }else{ q=`Pitot tube at section 2: what is Δhₚ (water)?`;
+      correct=R.dhPitot; fmt=x=>x.toFixed(2)+' m';
+    }
+    state.current={askType,correct,fmt};
+    const opts = distractors(correct);
+    const box=$('choices'); box.innerHTML='';
+    opts.forEach((val,i)=>{
+      const id='opt'+i;
+      const lab=document.createElement('label');
+      lab.innerHTML=`<input type="radio" name="q" value="${val}" id="${id}"> ${state.current.fmt(val)}`;
+      box.appendChild(lab);
+    });
+    $('qtext').textContent=q; $('feedback').textContent=''; state.selection=null;
+    box.querySelectorAll('input[name=q]').forEach(r=> r.addEventListener('change', e=> state.selection=+e.target.value ));
+  }
+  $('submit').addEventListener('click', ()=>{
+    if(state.selection==null){ $('feedback').textContent='Choose an answer first.'; return; }
+    const ok = Math.abs(state.selection - state.current.correct) < 1e-6 ||
+               Math.abs((state.selection - state.current.correct)/state.current.correct) < 0.02;
+    if(ok){ state.score++; $('feedback').innerHTML=`<span class="right">Correct!</span> ${state.current.fmt(state.current.correct)}.`; }
+    else{ $('feedback').innerHTML=`<span class="wrong">Not quite.</span> Correct is ${state.current.fmt(state.current.correct)}.`; }
+    updateScore();
+  });
+  $('next').addEventListener('click', nextQuestion);
+
+  function distractors(correct){
+    const vals=new Set([correct]);
+    const jitter=mag=> (1 + (Math.random()*2-1)*mag);
+    while(vals.size<4){
+      let v=correct*jitter(0.35);
+      if(!isFinite(v) || Math.abs(v)<1e-6) v = correct + (Math.random()*0.5+0.1);
+      vals.add(v);
+    }
+    const arr=[...vals]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    return arr;
+  }
+
+  // Physics core (no head-loss)
+  function compute(){
+    const {rho,g,D1,D2,v1,p1kPa,z1,z2}=state;
+    const A1=Math.PI*D1*D1/4, A2=Math.PI*D2*D2/4;
+    const v2=v1*(A1/A2);                  // continuity
+    const p1=p1kPa*1000;                  // Pa (gauge)
+    const p2=p1 + 0.5*rho*(v1*v1 - v2*v2) + rho*g*(z1 - z2); // Pa (gauge)
+    const dhMano=(p1-p2)/(rho*g);         // m (water)
+    const dhPitot=(v2*v2)/(2*g);          // m
+    const Q=A1*v1;                        // m^3/s
+    const head1=p1/(rho*g)+v1*v1/(2*g)+z1;
+    const head2=p2/(rho*g)+v2*v2/(2*g)+z2;
+    const dHead=Math.abs(head1-head2);
+    return {A1,A2,v2,p2,dhMano,dhPitot,Q,head1,head2,dHead};
+  }
+
+  function computeAndRender(){
+    const R=compute();
+    $('k_v2').textContent= R.v2.toFixed(2)+' m/s';
+    $('k_p2').textContent= (R.p2/1000).toFixed(0)+' kPa';
+    $('k_Q').textContent = (R.Q*1000).toFixed(2)+' L/s';
+    $('k_mano').textContent= R.dhMano.toFixed(2)+' m';
+    $('k_pitot').textContent= R.dhPitot.toFixed(2)+' m';
+    $('k_bal').textContent = R.dHead.toFixed(3)+' m';
+    $('s1_p').textContent= state.p1kPa.toFixed(0)+' kPa';
+    $('s1_v').textContent= state.v1.toFixed(2)+' m/s';
+    $('s1_z').textContent= state.z1.toFixed(2)+' m';
+    $('s2_p').textContent= (R.p2/1000).toFixed(0)+' kPa';
+    $('s2_v').textContent= R.v2.toFixed(2)+' m/s';
+    $('s2_z').textContent= state.z2.toFixed(2)+' m';
+    $('z2label').textContent = `z₂ = ${state.z2.toFixed(2)} m relative to section 1`;
+    draw(R);
+  }
+
+  // Color ramp: deep blue → cyan → near-white
+  function speedColor01(f){
+    f = Math.max(0, Math.min(1, f));
+    let r,g,b;
+    if (f < 0.6) {
+      const t = f/0.6;
+      r = 0; g = Math.round(90*(1-t) + 220*t); b = 255;
+    } else {
+      const t = (f-0.6)/0.4;
+      r = Math.round(230*t); g = Math.round(220*(1-t) + 255*t); b = 255;
+    }
+    return `rgb(${r},${g},${b})`;
+  }
+
+  const ctx=$('viz').getContext('2d');
+
+  // --- EGL & HGL overlay ---
+  function drawHeadLines(R){
+    const {z1,z2,v1} = state;
+    const W=ctx.canvas.width, H=ctx.canvas.height;
+    const x1=120, x2=W-120;
+    const yBase = H*0.62;  // same vertical reference used elsewhere
+    const k = 12;          // pixels per meter
+
+    // Pressure heads (p/ρg)
+    const h1_p = state.p1kPa*1000/(state.rho*state.g);
+    const h2_p = R.p2/(state.rho*state.g);
+
+    // Velocity heads (v²/2g)
+    const h1_v = v1*v1/(2*state.g);
+    const h2_v = R.v2*R.v2/(2*state.g);
+
+    const EGL1 = h1_p + h1_v + z1;
+    const EGL2 = h2_p + h2_v + z2;
+    const HGL1 = h1_p + z1;
+    const HGL2 = h2_p + z2;
+
+    const yHead = h => yBase - h*k;
+
+    ctx.save();
+    // HGL dashed (cyan)
+    ctx.setLineDash([6,4]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#7bdfff';
+    ctx.beginPath();
+    ctx.moveTo(x1, yHead(HGL1));
+    ctx.lineTo(x2, yHead(HGL2));
+    ctx.stroke();
+
+    // EGL solid (soft red)
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#ff6b6b';
+    ctx.beginPath();
+    ctx.moveTo(x1, yHead(EGL1));
+    ctx.lineTo(x2, yHead(EGL2));
+    ctx.stroke();
+    ctx.restore();
+
+    // Labels near right
+    ctx.fillStyle = '#7bdfff';
+    ctx.font = '13px system-ui';
+    ctx.fillText('HGL', x2 - 36, yHead((HGL1+HGL2)/2) - 6);
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillText('EGL', x2 - 36, yHead((EGL1+EGL2)/2) - 6);
+  }
+
+
+  function draw(R){
+    const {D1,D2,z1,z2,v1,style}=state;
+    const W=ctx.canvas.width, H=ctx.canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    // Background
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#0f1740'); bg.addColorStop(1,'#0a0f1e');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+    // Axis & radii (pixels)
+    const x1=120, x2=W-120;
+    const y1= H*0.62 - z1*12, y2= H*0.62 - z2*12;
+    const dScale=900;
+    const r1=Math.max(10,(D1*dScale)/2);
+    const r2=Math.max(10,(D2*dScale)/2);
+    const openFrac = 0.32; // retained for legacy logic (not used in glass)
+
+    // Shadow for depth
+    const shGrad = ctx.createRadialGradient((x1+x2)/2, H*0.90, 10, (x1+x2)/2, H*0.90, W*0.48);
+    shGrad.addColorStop(0,'rgba(0,0,0,0.35)'); shGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=shGrad;
+    ctx.beginPath(); ctx.ellipse((x1+x2)/2, H*0.90, (x2-x1)/2, 32, 0, 0, Math.PI*2); ctx.fill();
+
+    // Helper to draw outer pipe silhouette
+    function pipeOuterPath(topOffset=0, botOffset=0){
+      ctx.beginPath();
+      ctx.moveTo(x1, y1 - r1 + topOffset);
+      ctx.lineTo(x2, y2 - r2 + topOffset);
+      ctx.lineTo(x2, y2 + r2 - botOffset);
+      ctx.lineTo(x1, y1 + r1 - botOffset);
+      ctx.closePath();
+    }
+
+    // Outer body shading
+    pipeOuterPath();
+    const bodyGrad = ctx.createLinearGradient(0, y1-r1, 0, y1+r1);
+    bodyGrad.addColorStop(0, '#2b5ea8'); bodyGrad.addColorStop(0.45, '#173b74'); bodyGrad.addColorStop(1, '#0d2a57');
+    ctx.fillStyle = bodyGrad; ctx.fill();
+
+    // Specular sweep (cylindrical curvature)
+    ctx.save();
+    pipeOuterPath(); ctx.clip();
+    const sweep = ctx.createLinearGradient(x1, y1-r1, x1, y1+r1);
+    sweep.addColorStop(0.0,'rgba(255,255,255,0.18)');
+    sweep.addColorStop(0.25,'rgba(255,255,255,0.06)');
+    sweep.addColorStop(0.55,'rgba(255,255,255,0.00)');
+    sweep.addColorStop(0.85,'rgba(255,255,255,0.08)');
+    ctx.fillStyle = sweep;
+    ctx.fillRect(x1, y1-r1-40, (x2-x1), (r1+r2)+120);
+    ctx.restore();
+
+    // Inner edges to suggest wall thickness
+    ctx.save();
+    pipeOuterPath(); ctx.clip();
+    const innerTop = ctx.createLinearGradient(0, y1-r1, 0, y1-r1+20);
+    innerTop.addColorStop(0,'rgba(0,0,0,0.35)'); innerTop.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = innerTop; ctx.fillRect(x1, y1-r1, (x2-x1), 24);
+    const innerBot = ctx.createLinearGradient(0, y1+r1-20, 0, y1+r1);
+    innerBot.addColorStop(0,'rgba(0,0,0,0)'); innerBot.addColorStop(1,'rgba(0,0,0,0.30)');
+    ctx.fillStyle = innerBot; ctx.fillRect(x1, y1+r1-24, (x2-x1), 24);
+    ctx.restore();
+
+    // Clip to pipe interior (closed glass)
+    ctx.save();
+    pipeOuterPath(0,0);
+    ctx.clip();
+
+    // Flow streaklines (color by local speed, additive blend for glow)
+    const A1 = Math.PI*(2*r1/dScale)*(2*r1/dScale)/4;
+    const v2 = R.v2;
+    const vMin = Math.min(v1, v2), vMax = Math.max(v1, v2);
+    state.t += (0.006 + v1*0.002);
+
+    const rows = 10;
+    const N = 70;
+    const amp = 10;
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (let r=0; r<rows; r++) {
+      const fracY = (r+0.5)/rows;
+      for (let i=0; i<N; i++) {
+        const s = (i/N + (state.t + r*0.10))%1;
+        const yc = (1-s)*y1 + s*y2;
+        const rc = (1-s)*r1 + s*r2;
+        const topEdge = yc - rc;
+        const botEdge = yc + rc;
+        const yLine = topEdge + fracY*(botEdge-topEdge);
+
+        const Dloc = 2*rc/dScale;
+        const Aloc = Math.PI*Dloc*Dloc/4;
+        const vloc = v1 * (A1/Aloc);
+
+        const f = (vloc - vMin) / (vMax - vMin + 1e-9);
+        ctx.strokeStyle = speedColor01(f);
+        ctx.lineWidth = 0.9 + 1.4*f;
+
+        const x = x1 + s*(x2-x1) + amp*Math.sin(9*s + r*0.55 + i*0.05);
+        ctx.beginPath();
+        ctx.moveTo(x-6, yLine);
+        ctx.lineTo(x+6, yLine);
+        ctx.stroke();
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore(); // end interior clip
+
+    // Front glass rims as OVALS (inlet & outlet) — now FILLED like water
+    ctx.lineWidth=1.5;
+    // Inlet ellipse (Section 1)
+    ctx.beginPath();
+    ctx.ellipse(x1, y1, r1*0.5, r1*1.0, 0, 0, 2*Math.PI);
+    let inletGrad = ctx.createLinearGradient(x1, y1-r1, x1, y1+r1);
+    inletGrad.addColorStop(0, 'rgba(91,166,255,0.60)');  // lighter blue
+    inletGrad.addColorStop(1, 'rgba(23,59,116,0.60)');   // darker blue
+    ctx.fillStyle = inletGrad;
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.35)';
+    ctx.stroke();
+    // Outlet ellipse (Section 2)
+    ctx.beginPath();
+    ctx.ellipse(x2, y2, r2*0.5, r2*1.0, 0, 0, 2*Math.PI);
+    let outletGrad = ctx.createLinearGradient(x2, y2-r2, x2, y2+r2);
+    outletGrad.addColorStop(0, 'rgba(91,166,255,0.60)');
+    outletGrad.addColorStop(1, 'rgba(23,59,116,0.60)');
+    ctx.fillStyle = outletGrad;
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.35)';
+    ctx.stroke();
+
+    // Section tags
+    ctx.fillStyle='#cbe2ff'; ctx.font='16px system-ui';
+    ctx.fillText('Section 1', x1-34, y1 - r1 - 16);
+    ctx.fillText('Section 2', x2-34, y2 - r2 - 16);
+
+    // Gauges, velocity arrows, elevation markers
+    function gauge(x,y,val,max,label,color){
+      const rr=34, start=Math.PI, end=0;
+      ctx.beginPath(); ctx.arc(x,y,rr,start,end); ctx.strokeStyle='#20355f'; ctx.lineWidth=10; ctx.stroke();
+      const frac = Math.max(0, Math.min(1, val/max));
+      ctx.beginPath(); ctx.arc(x,y,rr,start, start + (end-start)*frac); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.stroke();
+      ctx.fillStyle='#b9c3df'; ctx.font='14px system-ui'; ctx.textAlign='center';
+      ctx.fillText(label, x, y+rr+12);
+      ctx.fillStyle='#ffffff'; ctx.font='bold 16px system-ui';
+      ctx.fillText((val).toFixed(0), x, y+4);
+    }
+    function velArrow(x,y,vel,color){
+      const L = 10 + vel*14;
+      ctx.strokeStyle=color; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+L,y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+L,y); ctx.lineTo(x+L-8,y-5); ctx.lineTo(x+L-8,y+5); ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+      ctx.fillStyle='#b9c3df'; ctx.font='13px system-ui'; ctx.fillText('v', x-10, y+3);
+    }
+    function elevMark(x, yBase, z, color){
+      const yRef=H*0.92;
+      ctx.strokeStyle='#253a6a'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x, yRef); ctx.lineTo(x, yBase); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=color; ctx.font='14px system-ui'; ctx.textAlign='center';
+      ctx.fillText(`z=${z.toFixed(2)} m`, x, yRef+14);
+    }
+
+    const p1 = state.p1kPa, p2 = R.p2/1000;
+    gauge(x1-46, y1 - r1 - 70, p1, 300, 'p₁ (kPa)', '#59a6ff');
+    gauge(x2+46, y2 - r2 - 70, p2, 300, 'p₂ (kPa)', '#59a6ff');
+    velArrow(x1-46, y1 + r1 + 36, state.v1, '#7bf2a1');
+    velArrow(x2-46, y2 + r2 + 36, R.v2, '#7bf2a1');
+    elevMark(x1, y1, state.z1, '#ffd166');
+    elevMark(x2, y2, state.z2, '#ffd166');
+
+    // Labels
+    ctx.fillStyle='#b9c3df'; ctx.font='14px system-ui'; ctx.textAlign='left';
+    ctx.fillText('pressure', x1-86, y1-r1-86);
+    ctx.fillText('velocity', x1-86, y1+r1+52);
+    ctx.textAlign='right';
+    ctx.fillText('pressure', x2+86, y2-r2-86);
+    ctx.textAlign='left';
+
+    // Overlay EGL & HGL
+    drawHeadLines(R);
+  }
+  // === ChatGPT proxy helpers ===
+  (function setupChatToggle(){
+    const chk = document.getElementById('useChatGPT');
+    const cfg = document.getElementById('chatgptConfig');
+    if(!chk || !cfg) return;
+    cfg.style.display = chk.checked ? 'grid' : 'none';
+    chk.addEventListener('change', ()=> cfg.style.display = chk.checked ? 'grid' : 'none');
+  })();
+
+  function sceneContext(){
+    const {rho,g,D1,D2,v1,p1kPa,z1,z2} = state;
+    const R = compute();
+    return [
+      `ρ=${rho} kg/m³, g=${g} m/s²`,
+      `D1=${D1} m, D2=${D2} m`,
+      `v1=${v1} m/s, v2=${R.v2.toFixed(3)} m/s`,
+      `p1=${p1kPa} kPa (gauge), p2=${(R.p2/1000).toFixed(1)} kPa (gauge)`,
+      `z1=${z1} m, z2=${z2} m`,
+      `Heads: H1=${R.head1.toFixed(3)} m, H2=${R.head2.toFixed(3)} m; HGL/EGL shown`
+    ].join('\\n');
+  }
+
+  async function sendChatGPT(userQuestion){
+    const endpoint = document.getElementById('chatEndpoint')?.value || '/api/chat';
+    const model = document.getElementById('chatModel')?.value || 'gpt-4o-mini';
+    const temperature = parseFloat(document.getElementById('chatTemp')?.value || '0.2');
+
+    const messages = [
+      { role:'system', content:
+        'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. ' +
+        'Use Bernoulli (HGL/EGL) appropriately and the current scene numbers. Prefer ≤150 words.'
+      },
+      { role:'user', content: `${userQuestion}\\n\\nCurrent scene:\\n${sceneContext()}` }
+    ];
+
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model, temperature, messages })
+    });
+    if(!res.ok) throw new Error('Proxy error');
+    const data = await res.json();
+    return data.reply || data.choices?.[0]?.message?.content || data.output_text || '(no reply)';
+  }
+
+
+
+  // Coach wiring
+  const coachExplainBtn = document.getElementById('coachExplain');
+  const coachHintBtn = document.getElementById('coachHint');
+  const coachSendBtn = document.getElementById('coachSend');
+  const coachQ = document.getElementById('coachQ');
+  const coachChips = document.querySelectorAll('.coachChips .chip');
+
+  function bootCoach(){
+    coachSay('Hi! I’m your AI Coach. Click “Explain this scene” for a walkthrough, ask a question, or try “Check: v2=1.5”.');
+  }
+  coachExplainBtn.addEventListener('click', ()=> explainScene());
+  coachHintBtn.addEventListener('click', ()=> hint());
+  coachSendBtn.addEventListener('click', async ()=>{
+    const q = coachQ.value.trim();
+    if(!q) return;
+    userSay(q);
+
+    const useChat = document.getElementById('useChatGPT')?.checked;
+    if(!useChat){
+      coachHandle(q);
+      coachQ.value='';
+      return;
+    }
+    try{
+      coachSay('…');
+      const reply = await sendChatGPT(q);
+      const log = document.getElementById('coachLog');
+      if (log && log.lastChild) log.lastChild.innerHTML = 'Coach: ' + reply;
+    }catch(err){
+      const log = document.getElementById('coachLog');
+      if(log && log.lastChild) log.lastChild.innerHTML = 'Coach: (proxy error, switching to built-in helper)';
+      coachHandle(q);
+    }
+    coachQ.value='';
+  });
+coachQ.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ coachSendBtn.click(); }
+  });
+  coachChips.forEach(ch=> ch.addEventListener('click', ()=>{
+    const q = ch.getAttribute('data-q') || ch.textContent;
+    userSay(q);
+    coachHandle(q);
+  }));
+
+  // Start coach
+  bootCoach();
+
+  // Start
+  computeAndRender();
+  (function loop(){ draw(compute()); requestAnimationFrame(loop); })();
+})();
+</script>
+</body>
+</html>
