@@ -1,85 +1,52 @@
-import express from 'express';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import compression from 'compression';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
-import OpenAI from 'openai';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+dotenv.config();
 const app = express();
-app.set('trust proxy', 1);
+app.use(express.json({ limit: "1mb" }));
 
-// --- Basic hardening & perf ---
-app.use(helmet({
-  // Allow inline scripts/styles from your single-file app
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+// If your HTML is on GitHub Pages, allow that origin here:
+app.use(cors({
+  origin: [
+    // replace <user> and <repo> below with your GitHub Pages origin
+    "https://jiaruilei.github.io",
+    "https://jiaruilei.github.io/jet-flow/"
+  ],
 }));
-app.use(compression());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '1mb' }));
 
-// CORS (same-origin by default). Set CORS_ORIGIN if you host frontend elsewhere.
-const corsOrigin = process.env.CORS_ORIGIN || undefined; // e.g., "https://your-frontend.onrender.com"
-app.use(cors(corsOrigin ? { origin: corsOrigin } : undefined));
+// Health check
+app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-// --- Rate limit the API (protect your key & quota) ---
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 60,             // 60 req/min per IP
-});
-app.use('/api/', limiter);
-
-// --- Static files (your game) ---
-const publicDir = path.join(__dirname, 'public');
-app.use(express.static(publicDir, { maxAge: '1h', etag: true }));
-
-// Health endpoint for Render
-app.get('/healthz', (req, res) => res.status(200).send('ok'));
-
-// --- ChatGPT proxy endpoint ---
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-app.post('/api/chat', async (req, res) => {
+// ChatGPT proxy
+app.post("/api/chat", async (req, res) => {
   try {
-    const { model = 'gpt-4o-mini', temperature = 0.2, messages = [] } = req.body || {};
-    if (!Array.isArray(messages)) {
-      return res.status(400).json({ ok: false, error: 'Invalid payload: messages must be an array' });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ ok: false, error: 'Server missing OPENAI_API_KEY' });
-    }
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
 
-    // Chat Completions (matches your front-end payload)
-    const out = await client.chat.completions.create({
-      model,
-      temperature,
-      messages,
-      // Optional safety caps:
-      max_tokens: 600
+    const { model="gpt-4o-mini", temperature=0.2, system="", messages=[] } = req.body || {};
+    const chatMessages = [];
+    if (system) chatMessages.push({ role: "system", content: system });
+    for (const m of messages) if (m?.role && m?.content) chatMessages.push(m);
+
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ model, temperature, messages: chatMessages })
     });
 
-    const reply = out.choices?.[0]?.message?.content?.trim() || '';
-    return res.json({ ok: true, reply });
+    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    const data = await r.json();
+    res.json({ reply: data?.choices?.[0]?.message?.content ?? "" });
   } catch (err) {
-    console.error('Chat proxy error:', err?.response?.data || err);
-    return res.status(500).json({ ok: false, error: 'Coach error' });
+    console.error("Proxy error:", err);
+    res.status(500).json({ error: "Proxy error" });
   }
 });
 
-// Single-page fallback: serve index.html for unknown routes (optional)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
-});
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`AI coach proxy listening on :${port}`));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
