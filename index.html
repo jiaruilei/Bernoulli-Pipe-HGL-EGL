@@ -306,7 +306,7 @@ const $ = id => document.getElementById(id);
   function hint(){
     const {D1,D2,z2,v1} = state;
     const tips = [];
-    if (D2 < D1) tips.push('Narrowing (D₂<D₁) accelerates flow, increasing v₂.');
+    if (D2 < D1) tips.push('Narrowing (D₂) accelerates flow, increasing v₂.');
     else tips.push('Widening (D₂≥D₁) decelerates flow, reducing v₂.');
     if (z2 > 0) tips.push('A positive z₂ consumes head for elevation, lowering p₂.');
     if (v1 < 0.8) tips.push('Increasing v₁ increases both Q and v₂ (via continuity).');
