@@ -221,7 +221,6 @@
 
         <div class="coachChips">
           <div class="chip" data-q="How do I increase v2?">How do I increase v₂?</div>
-          <div class="chip" data-q="Why did p2 drop?">Why did p₂ drop?</div>
           <div class="chip" data-q="Walk me through Bernoulli">Walk me through Bernoulli</div>
           <div class="chip" data-q="Check: v2= ?">Check: v₂ = ?</div>
           <div class="chip" data-q="Challenge me">Challenge me</div>
@@ -349,13 +348,6 @@ const $ = id => document.getElementById(id);
     if (ql.startsWith('check:') || ql.startsWith('check')){ coachCheck(q.replace(/check:?/i,'')); return; }
     if (ql.includes('increase v2') || ql.includes('increase v₂') || ql.includes('make v2')){
       coachSay('To increase v₂: decrease D₂ (narrow outlet), increase v₁, or both. Trade-offs: higher v₂ typically lowers p₂ (Bernoulli).');
-      return;
-    }
-    if (ql.includes('why') && (ql.includes('p2') || ql.includes('p₂') || ql.includes('pressure'))){
-      const cause = [];
-      if (D2 < D1) cause.push('D₂<D₁ → v₂ increases → pressure drops');
-      if (z2 > 0) cause.push('z₂>0 → some head goes to elevation');
-      coachSay(`p₂ is lower because ${cause.length?cause.join(' and '):'kinetic/elevation terms increased'}. Bernoulli conserves total head.`);
       return;
     }
     if (ql.includes('bernoulli')){
