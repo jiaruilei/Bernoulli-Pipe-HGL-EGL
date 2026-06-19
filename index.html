@@ -60,6 +60,19 @@
   .coachChips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
   .chip{background:#0e1430; border:1px solid #2a3a68; color:#e9f3ff; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  .coachInput input, .monitorControls input{background:#0e1430; border:1px solid #223154; color:#e9f3ff; border-radius:8px; padding:8px 10px; min-width:0}
+  .coachMonitor{margin-top:10px; background:#0d1430; border:1px solid #223154; border-radius:12px; padding:10px}
+  .monitorHeader{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap}
+  .monitorHeader button{font-size:12px; padding:6px 8px}
+  .signalRows{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .signalTag{display:inline-flex; gap:6px; align-items:center; background:#10183b; border:1px solid #2a3a68; color:#cfe6ff; border-radius:999px; padding:5px 8px; font-size:12px}
+  .signalTag strong{color:#fff}
+  .monitorDetails{margin-top:8px; color:var(--muted)}
+  .monitorDetails summary{cursor:pointer; color:#cfe6ff; font-weight:600}
+  .monitorControls{display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; margin-top:8px}
+  .instructorSummary{max-height:190px; overflow:auto; background:#0e1430; border:1px solid #223154; border-radius:10px; padding:8px; margin-top:8px}
+  .recentQ{border-top:1px dashed #223154; padding-top:6px; margin-top:6px}
+  @media (max-width: 760px){ .monitorControls{grid-template-columns:1fr} }
 
 
   /* MathJax tune for dark coach area */
@@ -197,7 +210,7 @@
       <!-- AI Coach -->
       <div class="coachCard" id="coachCard">
         <div class="coachHeader">
-          <div class="title">🧠 AI Coach <span class="pill">concept helper</span></div>
+          <div class="title">🧠 AI Coach <span class="pill">adaptive quiz helper</span></div>
           <div style="display:flex; gap:6px">
             <button id="coachExplain">Explain this scene</button>
             <button id="coachHint" class="secondary">Give me a hint</button>
@@ -229,11 +242,30 @@
           <input id="coachQ" type="text" placeholder="Ask a question (e.g., ‘Why does pressure drop when the pipe narrows?’)" />
           <button id="coachSend">Ask</button>
         </div>
+
+        <div class="coachMonitor" id="coachMonitor">
+          <div class="monitorHeader">
+            <div class="small"><strong>Adaptive quiz focus:</strong> <span id="quizFocus">balanced until students ask questions</span></div>
+            <button id="refreshQuizSignal" class="secondary">Refresh focus</button>
+          </div>
+          <div id="questionSignal" class="signalRows"></div>
+          <details class="monitorDetails" id="instructorMonitor">
+            <summary>Instructor monitor</summary>
+            <div class="small" style="margin-top:6px">View recent student questions from the Render proxy. Set <span class="mono">INSTRUCTOR_TOKEN</span> on Render to protect this view.</div>
+            <div class="monitorControls">
+              <input id="instructorToken" type="password" placeholder="Instructor token (optional)">
+              <button id="loadQuestionSummary">Load</button>
+              <button id="downloadQuestions" class="secondary">CSV</button>
+            </div>
+            <div id="questionSummary" class="instructorSummary small">No summary loaded.</div>
+          </details>
+        </div>
       </div>
 
       <!-- Quiz area -->
       <div class="card" id="quizCard" style="margin-top:12px; display:none">
         <div class="pill">Quiz Mode</div>
+        <div id="adaptiveQuizNote" class="msg">Adaptive quiz is using a balanced mix until student questions are logged.</div>
         <div class="quiz">
           <div id="qtext" style="font-weight:600"></div>
           <div class="choices" id="choices"></div>
@@ -284,6 +316,201 @@ const $ = id => document.getElementById(id);
     typesetEl(div);
   }
   function fmt(x,n=2){ return Number(x).toFixed(n); }
+
+  const QUIZ_TYPE_LABELS = {
+    v2: 'continuity: find v₂',
+    p2kPa: 'Bernoulli: find p₂',
+    dhMano: 'manometer Δh',
+    dhPitot: 'Pitot velocity head',
+    Q: 'flow rate Q'
+  };
+  const DEFAULT_QUIZ_WEIGHTS = { v2:1, p2kPa:1, dhMano:1, dhPitot:1, Q:1 };
+
+  function escapeHtml(text){
+    return String(text ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  }
+  function getSessionId(){
+    const key = 'bernoulliCoachSessionId';
+    try{
+      let id = localStorage.getItem(key);
+      if(!id){
+        const rand = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        id = `session-${rand}`;
+        localStorage.setItem(key, id);
+      }
+      return id;
+    }catch(e){
+      return `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+  }
+  function newRequestId(){
+    const rand = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    return `req-${Date.now()}-${rand}`;
+  }
+  function apiUrl(path){
+    const pathPart = path.startsWith('/') ? path : `/${path}`;
+    const chatEndpoint = document.getElementById('chatEndpoint')?.value?.trim() || '/api/chat';
+    try{
+      const chatUrl = new URL(chatEndpoint, window.location.href);
+      const apiRootPath = chatUrl.pathname.replace(/\/api\/chat\/?$/, '');
+      return `${chatUrl.origin}${apiRootPath}${pathPart}`;
+    }catch(e){
+      return pathPart;
+    }
+  }
+  function clientQuizTypesFor(question){
+    const q = String(question || '').toLowerCase();
+    const types = new Set();
+    if(/continuity|diameter|area|\bd1\b|\bd2\b|d₁|d₂|flow rate|\bq\b|narrow|widen|velocity|increase v[₂2]/.test(q)){ types.add('v2'); types.add('Q'); }
+    if(/pressure|\bp1\b|\bp2\b|p₁|p₂|drop|gauge|kpa|elevation|height|\bz1\b|\bz2\b|z₁|z₂|bernoulli|hgl|egl|head|energy/.test(q)){ types.add('p2kPa'); types.add('dhMano'); }
+    if(/manometer|delta h|\bdh\b|Δh|tap/.test(q)){ types.add('dhMano'); }
+    if(/pitot|stagnation|velocity head/.test(q)){ types.add('dhPitot'); }
+    if(!types.size) ['v2','p2kPa','dhMano','dhPitot','Q'].forEach(t=>types.add(t));
+    return [...types];
+  }
+  function buildRecommendationFromWeights(weights){
+    return Object.keys(DEFAULT_QUIZ_WEIGHTS)
+      .map(type => ({ type, label: QUIZ_TYPE_LABELS[type], weight: Number(weights?.[type] ?? 1), count: 0 }))
+      .sort((a,b)=>b.weight-a.weight);
+  }
+  function renderQuizSignal(summary){
+    const weights = { ...DEFAULT_QUIZ_WEIGHTS, ...(summary?.quizWeights || {}) };
+    state.quizWeights = weights;
+    state.quizSignal = summary || null;
+
+    const total = Number(summary?.totalQuestions || 0);
+    const recommendations = summary?.recommendedQuizTypes?.length ? summary.recommendedQuizTypes : buildRecommendationFromWeights(weights);
+    const top = recommendations.slice(0,3);
+    const focusText = total ? top.map(item => item.label || QUIZ_TYPE_LABELS[item.type] || item.type).join(' • ') : 'balanced mix until students ask questions';
+
+    const focusEl = $('quizFocus');
+    if(focusEl) focusEl.textContent = focusText;
+    const noteEl = $('adaptiveQuizNote');
+    if(noteEl) noteEl.textContent = total ? `Adaptive quiz is prioritizing: ${focusText}.` : 'Adaptive quiz is using a balanced mix until student questions are logged.';
+
+    const rows = $('questionSignal');
+    if(rows){
+      rows.innerHTML = '';
+      top.forEach(item => {
+        const tag = document.createElement('span');
+        tag.className = 'signalTag';
+        const label = item.label || QUIZ_TYPE_LABELS[item.type] || item.type;
+        tag.innerHTML = `<strong>${escapeHtml(label)}</strong> ×${Number(item.weight || weights[item.type] || 1).toFixed(1)}`;
+        rows.appendChild(tag);
+      });
+      if(!total){
+        const tag = document.createElement('span');
+        tag.className = 'signalTag';
+        tag.textContent = 'No class questions logged yet';
+        rows.appendChild(tag);
+      }
+    }
+  }
+  async function refreshQuizSignal(showStatus=false){
+    const rows = $('questionSignal');
+    if(showStatus && rows) rows.innerHTML = '<span class="signalTag">Refreshing…</span>';
+    try{
+      const res = await fetch(apiUrl('/api/questions/quiz-signal'), { method:'GET' });
+      if(!res.ok) throw new Error('quiz signal unavailable');
+      const data = await res.json();
+      renderQuizSignal(data);
+      return data;
+    }catch(err){
+      renderQuizSignal({ totalQuestions: 0, quizWeights: state.quizWeights || DEFAULT_QUIZ_WEIGHTS });
+      return null;
+    }
+  }
+  async function logStudentQuestion(question, source='built-in-coach'){
+    const requestId = newRequestId();
+    const payload = { question, source, sessionId:getSessionId(), requestId, scene:sceneContext() };
+    try{
+      const res = await fetch(apiUrl('/api/questions/log'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error('log unavailable');
+      const data = await res.json();
+      if(data?.classification?.quizTypes){
+        const boosted = { ...(state.quizWeights || DEFAULT_QUIZ_WEIGHTS) };
+        data.classification.quizTypes.forEach(type => boosted[type] = (Number(boosted[type] || 1) + 0.75));
+        renderQuizSignal({ totalQuestions: 1, quizWeights: boosted });
+      }
+      refreshQuizSignal(false);
+    }catch(err){
+      const boosted = { ...(state.quizWeights || DEFAULT_QUIZ_WEIGHTS) };
+      clientQuizTypesFor(question).forEach(type => boosted[type] = (Number(boosted[type] || 1) + 0.75));
+      renderQuizSignal({ totalQuestions: 1, quizWeights: boosted });
+    }
+  }
+  function chooseQuizType(){
+    const weights = { ...DEFAULT_QUIZ_WEIGHTS, ...(state.quizWeights || {}) };
+    const entries = Object.entries(weights).filter(([type, weight]) => DEFAULT_QUIZ_WEIGHTS[type] !== undefined && Number(weight) > 0);
+    const total = entries.reduce((sum, [, weight]) => sum + Number(weight), 0) || entries.length;
+    let r = Math.random() * total;
+    for(const [type, weight] of entries){
+      r -= Number(weight);
+      if(r <= 0) return type;
+    }
+    return 'v2';
+  }
+  function renderQuestionSummary(data){
+    const box = $('questionSummary');
+    if(!box) return;
+    const topTopics = Object.entries(data?.topicCounts || {}).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const topQuiz = (data?.recommendedQuizTypes || []).slice(0,5);
+    const recent = data?.recent || [];
+    const topicHtml = topTopics.length ? topTopics.map(([k,v])=>`<span class="signalTag"><strong>${escapeHtml(k)}</strong>${v}</span>`).join(' ') : 'No topics yet.';
+    const quizHtml = topQuiz.length ? topQuiz.map(item=>`<span class="signalTag"><strong>${escapeHtml(item.label || item.type)}</strong>${escapeHtml(item.count ?? 0)}</span>`).join(' ') : 'No quiz signal yet.';
+    const recentHtml = recent.length ? recent.map(item => `
+      <div class="recentQ">
+        <div><strong>${escapeHtml(new Date(item.ts).toLocaleString())}</strong> <span style="color:#9ddcff">${escapeHtml(item.source || '')}</span></div>
+        <div>${escapeHtml(item.question || '')}</div>
+        <div style="color:#9ddcff">${escapeHtml((item.topics || []).join(', '))}</div>
+      </div>`).join('') : '<div class="recentQ">No recent questions.</div>';
+    box.innerHTML = `
+      <div><strong>Total logged questions:</strong> ${escapeHtml(data?.totalQuestions ?? 0)}</div>
+      <div style="margin-top:6px"><strong>Topic counts:</strong><br>${topicHtml}</div>
+      <div style="margin-top:6px"><strong>Quiz priorities:</strong><br>${quizHtml}</div>
+      <div style="margin-top:6px"><strong>Recent questions:</strong>${recentHtml}</div>`;
+  }
+  async function loadQuestionSummary(){
+    const box = $('questionSummary');
+    if(box) box.textContent = 'Loading…';
+    try{
+      const token = $('instructorToken')?.value?.trim();
+      const headers = token ? {'x-instructor-token': token} : {};
+      const res = await fetch(apiUrl('/api/questions/summary'), { headers });
+      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
+      if(!res.ok) throw new Error('Could not load question summary.');
+      const data = await res.json();
+      renderQuestionSummary(data);
+      renderQuizSignal(data);
+    }catch(err){
+      if(box) box.textContent = err.message || 'Could not load question summary.';
+    }
+  }
+  async function downloadQuestionCsv(){
+    const token = $('instructorToken')?.value?.trim();
+    const headers = token ? {'x-instructor-token': token} : {};
+    const box = $('questionSummary');
+    try{
+      const res = await fetch(apiUrl('/api/questions/export.csv'), { headers });
+      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
+      if(!res.ok) throw new Error('Could not download CSV.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bernoulli-student-questions.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }catch(err){
+      if(box) box.textContent = err.message || 'Could not download CSV.';
+    }
+  }
 
   function explainScene(){
     const R = compute();
@@ -370,6 +597,7 @@ const $ = id => document.getElementById(id);
     rho:1000, g:9.81, D1:0.10, D2:0.05, v1:1.0, p1kPa:180, z1:0.0, z2:2.0,
     style:'glass', // fixed to glass (closed top)
     inQuiz:false, score:0, seen:0, current:{}, selection:null,
+    quizWeights:{...DEFAULT_QUIZ_WEIGHTS}, quizSignal:null,
     t:0
   };
 
@@ -392,7 +620,7 @@ const $ = id => document.getElementById(id);
   });
 
   $('startQuiz').addEventListener('click', ()=> state.inQuiz? stopQuiz() : startQuiz());
-  function startQuiz(){ state.inQuiz=true; $('quizCard').style.display='block'; nextQuestion(); }
+  async function startQuiz(){ state.inQuiz=true; $('quizCard').style.display='block'; await refreshQuizSignal(false); nextQuestion(); }
   function stopQuiz(){ state.inQuiz=false; $('quizCard').style.display='none'; }
   function updateScore(){ $('score').textContent=`Score: ${state.score}/${state.seen}`; }
 
@@ -403,7 +631,7 @@ const $ = id => document.getElementById(id);
     state.v1=rnd(0.4,4.0,0.1); state.p1kPa=rnd(90,240,1); state.z2=rnd(-3,3,0.1);
     ['D1','D2','v1','p1','z2'].forEach(id=>{ $(id).value = (id==='p1'?state.p1kPa:state[id]); $(id+'n')?.value && ($(id+'n').value=$(id).value); });
     const R=compute();
-    const askType = ['v2','p2kPa','dhMano','dhPitot'][Math.floor(Math.random()*4)];
+    const askType = chooseQuizType();
     let q='', correct=0, fmt=x=>x;
     if(askType==='v2'){ q=`Given D₁=${state.D1.toFixed(3)} m, D₂=${state.D2.toFixed(3)} m, v₁=${state.v1.toFixed(2)} m/s, what is v₂?`;
       correct=R.v2; fmt=x=>x.toFixed(2)+' m/s';
@@ -411,8 +639,10 @@ const $ = id => document.getElementById(id);
       correct=R.p2/1000; fmt=x=>x.toFixed(0)+' kPa';
     }else if(askType==='dhMano'){ q=`What is the manometer reading Δh (water) between taps at 1 and 2?`;
       correct=R.dhMano; fmt=x=>x.toFixed(2)+' m';
-    }else{ q=`Pitot tube at section 2: what is Δhₚ (water)?`;
+    }else if(askType==='dhPitot'){ q=`Pitot tube at section 2: what is Δhₚ (water)?`;
       correct=R.dhPitot; fmt=x=>x.toFixed(2)+' m';
+    }else{ q=`What is the flow rate Q through the pipe?`;
+      correct=R.Q*1000; fmt=x=>x.toFixed(2)+' L/s';
     }
     state.current={askType,correct,fmt};
     const opts = distractors(correct);
@@ -751,26 +981,40 @@ const $ = id => document.getElementById(id);
     ].join('\\n');
   }
 
-  async function sendChatGPT(userQuestion){
+  async function sendChatGPT(userQuestion, source='typed'){
     const endpoint = document.getElementById('chatEndpoint')?.value || '/api/chat';
     const model = document.getElementById('chatModel')?.value || 'gpt-4o-mini';
     const temperature = parseFloat(document.getElementById('chatTemp')?.value || '0.2');
+    const scene = sceneContext();
 
     const messages = [
       { role:'system', content:
         'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. ' +
         'Use Bernoulli (HGL/EGL) appropriately and the current scene numbers. Prefer ≤150 words.'
       },
-      { role:'user', content: `${userQuestion}\\n\\nCurrent scene:\\n${sceneContext()}` }
+      { role:'user', content: `${userQuestion}\n\nCurrent scene:\n${scene}` }
     ];
 
     const res = await fetch(endpoint, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model, temperature, messages })
+      body: JSON.stringify({
+        model, temperature, messages,
+        question:userQuestion,
+        scene,
+        sessionId:getSessionId(),
+        requestId:newRequestId(),
+        source:`chatgpt-${source}`
+      })
     });
     if(!res.ok) throw new Error('Proxy error');
     const data = await res.json();
+    if(data?.classification?.quizTypes){
+      const boosted = { ...(state.quizWeights || DEFAULT_QUIZ_WEIGHTS) };
+      data.classification.quizTypes.forEach(type => boosted[type] = (Number(boosted[type] || 1) + 0.75));
+      renderQuizSignal({ totalQuestions: 1, quizWeights: boosted });
+    }
+    refreshQuizSignal(false);
     return data.reply || data.choices?.[0]?.message?.content || data.output_text || '(no reply)';
   }
 
@@ -784,45 +1028,52 @@ const $ = id => document.getElementById(id);
   const coachChips = document.querySelectorAll('.coachChips .chip');
 
   function bootCoach(){
-    coachSay('Hi! I’m your AI Coach. Click “Explain this scene” for a walkthrough, ask a question, or try “Check: v2=1.5”.');
+    coachSay('Hi! I’m your AI Coach. Your questions now help choose the next quiz topics. Try “Why does pressure drop?” or “Check: v2=1.5”.');
   }
-  coachExplainBtn.addEventListener('click', ()=> explainScene());
-  coachHintBtn.addEventListener('click', ()=> hint());
-  coachSendBtn.addEventListener('click', async ()=>{
-    const q = coachQ.value.trim();
+  async function askCoachQuestion(q, source='typed'){
+    q = String(q || '').trim();
     if(!q) return;
     userSay(q);
 
     const useChat = document.getElementById('useChatGPT')?.checked;
     if(!useChat){
+      logStudentQuestion(q, source);
       coachHandle(q);
-      coachQ.value='';
+      if(coachQ) coachQ.value='';
       return;
     }
     try{
       coachSay('…');
-      const reply = await sendChatGPT(q);
+      const reply = await sendChatGPT(q, source);
       const log = document.getElementById('coachLog');
       if (log && log.lastChild) log.lastChild.innerHTML = 'Coach: ' + reply;
       typesetEl(log.lastChild);
     }catch(err){
       const log = document.getElementById('coachLog');
       if(log && log.lastChild) log.lastChild.innerHTML = 'Coach: (proxy error, switching to built-in helper)';
+      logStudentQuestion(q, `proxy-fallback-${source}`);
       coachHandle(q);
     }
-    coachQ.value='';
-  });
+    if(coachQ) coachQ.value='';
+  }
+  coachExplainBtn.addEventListener('click', ()=>{ logStudentQuestion('Explain this scene', 'button-explain'); explainScene(); });
+  coachHintBtn.addEventListener('click', ()=>{ logStudentQuestion('Give me a hint', 'button-hint'); hint(); });
+  coachSendBtn.addEventListener('click', ()=> askCoachQuestion(coachQ.value, 'typed'));
 coachQ.addEventListener('keydown', (e)=>{
     if(e.key==='Enter'){ coachSendBtn.click(); }
   });
   coachChips.forEach(ch=> ch.addEventListener('click', ()=>{
     const q = ch.getAttribute('data-q') || ch.textContent;
-    userSay(q);
-    coachHandle(q);
+    askCoachQuestion(q, 'chip');
   }));
+  document.getElementById('refreshQuizSignal')?.addEventListener('click', ()=> refreshQuizSignal(true));
+  document.getElementById('loadQuestionSummary')?.addEventListener('click', loadQuestionSummary);
+  document.getElementById('downloadQuestions')?.addEventListener('click', downloadQuestionCsv);
 
   // Start coach
   bootCoach();
+  renderQuizSignal({ totalQuestions: 0, quizWeights: state.quizWeights });
+  refreshQuizSignal(false);
 
   // Start
   computeAndRender();
