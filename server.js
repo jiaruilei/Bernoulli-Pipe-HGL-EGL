@@ -323,7 +323,7 @@ app.post("/api/chat", async (req, res) => {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     if (!OPENAI_API_KEY) return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
 
-    const { model = "gpt-4o-mini", temperature = 0.2, system = "", messages = [] } = req.body || {};
+    const { model = "gpt-5.4-mini", temperature = 0.2, system = "", messages = [] } = req.body || {};
     const question = extractQuestionFromBody(req.body);
 
     let classification = null;
