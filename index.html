@@ -334,7 +334,7 @@
           <div class="chip" data-q="Challenge me">Challenge me</div>
         </div>
         <div class="coachInput">
-          <textarea id="coachQ" rows="3" placeholder="Ask a question (e.g., ‘Why does pressure drop when the pipe narrows?’) — press Enter to send, Shift+Enter for a new line"></textarea>
+          <textarea id="coachQ" rows="3" placeholder="Ask the coach..."></textarea>
           <button id="coachSend">Ask</button>
         </div>
 
@@ -481,7 +481,7 @@ const $ = id => document.getElementById(id);
     const focusEl = $('quizFocus');
     if(focusEl) focusEl.textContent = focusText;
     const noteEl = $('adaptiveQuizNote');
-    if(noteEl) noteEl.textContent = total ? `Adaptive quiz is prioritizing: ${focusText}.` : 'Adaptive quiz is using a balanced mix until student questions are logged.';
+    if(noteEl) noteEl.textContent = total ? `Quiz mix: ${focusText}.` : 'Quiz mix: balanced.';
 
     const rows = $('questionSignal');
     if(rows){
@@ -1152,7 +1152,7 @@ const $ = id => document.getElementById(id);
     const messages = [
       { role:'system', content:
         'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. ' +
-        'Use Bernoulli (HGL/EGL) appropriately and the current scene numbers. Prefer ≤150 words.'
+        'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words.'
       },
       { role:'user', content: `${userQuestion}\n\nCurrent scene:\n${scene}` }
     ];
