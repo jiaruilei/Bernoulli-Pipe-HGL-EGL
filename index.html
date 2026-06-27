@@ -312,11 +312,11 @@
           </div>
         </div>
         
-        <div id="coachCfg" style="margin:6px 0 8px; display:grid; gap:6px">
+        <div id="coachCfg" style="margin:6px 0 8px; display:none !important; gap:6px">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cfe6ff;font-size:13px">
-            <input id="useChatGPT" type="checkbox"> Use ChatGPT for replies
+            <input id="useChatGPT" type="checkbox" checked> Use ChatGPT for replies
           </label>
-          <div id="chatgptConfig" style="display:none; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
+          <div id="chatgptConfig" style="display:none !important; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
             <input id="chatEndpoint" placeholder="/api/chat" value="https://bernoulli-pipe-hgl-egl.onrender.com/api/chat"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
             <input id="chatModel" value="gpt-4o-mini"
@@ -344,16 +344,6 @@
             <button id="refreshQuizSignal" class="secondary">Refresh focus</button>
           </div>
           <div id="questionSignal" class="signalRows"></div>
-          <details class="monitorDetails" id="instructorMonitor">
-            <summary>Instructor monitor</summary>
-            <div class="small" style="margin-top:6px">View recent student questions from the Render proxy. Set <span class="mono">INSTRUCTOR_TOKEN</span> on Render to protect this view.</div>
-            <div class="monitorControls">
-              <input id="instructorToken" type="password" placeholder="Instructor token (optional)">
-              <button id="loadQuestionSummary">Load</button>
-              <button id="downloadQuestions" class="secondary">CSV</button>
-            </div>
-            <div id="questionSummary" class="instructorSummary small">No summary loaded.</div>
-          </details>
         </div>
       </div>
 
@@ -758,7 +748,6 @@ const $ = id => document.getElementById(id);
     ];
     const html = summary.join('<br>');
     $('poeFeedback').innerHTML = html;
-    coachSay('Predict–Observe–Explain:<br>' + html);
     state.poe.active = false;
   }
 
@@ -1123,9 +1112,16 @@ const $ = id => document.getElementById(id);
   (function setupChatToggle(){
     const chk = document.getElementById('useChatGPT');
     const cfg = document.getElementById('chatgptConfig');
+    const wrapper = document.getElementById('coachCfg');
     if(!chk || !cfg) return;
-    cfg.style.display = chk.checked ? 'grid' : 'none';
-    chk.addEventListener('change', ()=> cfg.style.display = chk.checked ? 'grid' : 'none');
+    chk.checked = true;
+    if(wrapper) wrapper.style.display = 'none';
+    cfg.style.display = 'none';
+    chk.addEventListener('change', ()=>{
+      chk.checked = true;
+      cfg.style.display = 'none';
+      if(wrapper) wrapper.style.display = 'none';
+    });
   })();
 
   function sceneContext(){
@@ -1195,7 +1191,7 @@ const $ = id => document.getElementById(id);
     if(!q) return;
     userSay(q);
 
-    const useChat = document.getElementById('useChatGPT')?.checked;
+    const useChat = true;
     if(!useChat){
       logStudentQuestion(q, source);
       coachHandle(q);
