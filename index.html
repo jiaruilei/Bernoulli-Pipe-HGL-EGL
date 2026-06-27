@@ -1103,8 +1103,8 @@ const $ = id => document.getElementById(id);
     }
 
     const p1 = state.p1kPa, p2 = R.p2/1000;
-    gauge(x1-46, y1 - r1 - 90, p1, 300, 'p₁(kPa)', '#59a6ff');
-    gauge(x2+46, y2 - r2 - 90, p2, 300, 'p₂(kPa)', '#59a6ff');
+    gauge(x1-46, y1 - r1 - 60, p1, 300, 'p₁(kPa)', '#59a6ff');
+    gauge(x2+46, y2 - r2 - 60, p2, 300, 'p₂(kPa)', '#59a6ff');
     velArrow(x1-46, y1 + r1 + 36, state.v1, '#7bf2a1');
     velArrow(x2-46, y2 + r2 + 36, R.v2, '#7bf2a1');
     elevMark(x1, y1, state.z1, '#ffd166');
