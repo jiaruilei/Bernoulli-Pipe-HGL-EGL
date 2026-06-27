@@ -1073,8 +1073,8 @@ const $ = id => document.getElementById(id);
 
     // Section tags
     ctx.fillStyle='#cbe2ff'; ctx.font='18px system-ui';
-    ctx.fillText('Section 1', x1-34, y1 - r1 - 5);
-    ctx.fillText('Section 2', x2-34, y2 - r2 - 5);
+    ctx.fillText('Section 1', x1-34, y1 - r1 - 3);
+    ctx.fillText('Section 2', x2-34, y2 - r2 - 3);
 
     // Gauges, velocity arrows, elevation markers
     function gauge(x,y,val,max,label,color){
@@ -1103,8 +1103,8 @@ const $ = id => document.getElementById(id);
     }
 
     const p1 = state.p1kPa, p2 = R.p2/1000;
-    gauge(x1-46, y1 - r1 - 70, p1, 300, 'p₁ (kPa)', '#59a6ff');
-    gauge(x2+46, y2 - r2 - 70, p2, 300, 'p₂ (kPa)', '#59a6ff');
+    gauge(x1-46, y1 - r1 - 80, p1, 300, 'p₁(kPa)', '#59a6ff');
+    gauge(x2+46, y2 - r2 - 80, p2, 300, 'p₂(kPa)', '#59a6ff');
     velArrow(x1-46, y1 + r1 + 36, state.v1, '#7bf2a1');
     velArrow(x2-46, y2 + r2 + 36, R.v2, '#7bf2a1');
     elevMark(x1, y1, state.z1, '#ffd166');
