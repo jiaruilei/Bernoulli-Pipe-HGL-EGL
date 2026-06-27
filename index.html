@@ -129,13 +129,13 @@
   .monitorDetails{font-size:15px}
   .monitorControls{gap:10px; margin-top:10px}
   .instructorSummary{max-height:260px; font-size:15px; line-height:1.45; padding:10px}
-  .poeBox{margin-top:14px; padding:12px; background:#0e1430; border:1px solid #223154; border-radius:14px}
+  .poeBox{margin-top:12px; padding:10px; background:#0e1430; border:1px solid #223154; border-radius:14px}
   .poeTitle{font-weight:700; margin-bottom:6px}
-  .poeGrid{display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0}
+  .poeGrid{display:grid; grid-template-columns:1fr; gap:8px; margin:8px 0}
   .poeGrid label{display:grid; gap:4px; color:var(--muted); font-size:15px; line-height:1.35}
   .poeGrid select{background:#10183b; color:var(--ink); border:1px solid #2a3a68; border-radius:10px; padding:9px 10px; font-size:15px}
   .poeActions{display:flex; gap:8px; flex-wrap:wrap}
-
+  @media (max-width: 640px){.poeGrid{grid-template-columns:1fr}}
   @media (max-width: 980px){
     .grid{grid-template-columns:1fr}
     .wrap{padding:18px}
@@ -179,10 +179,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Bernoulli Pipe (Pressure • Velocity • Elevation)</h1>
-  <div class="sub">
-    A pipe flow with luminous streaks (brighter = faster). Focus is on p, v, z and the Bernoulli balance between two sections.
-  </div>
+  <h1>Bernoulli Pipe</h1>
 
   <div class="grid">
     <!-- Controls -->
@@ -233,10 +230,6 @@
       <div style="display:flex; gap:8px; margin-top:10px">
         <button id="reset" class="secondary">Reset</button>
         <button id="startQuiz">Start Quiz</button>
-      </div>
-
-      <div class="small" style="color:var(--muted); margin-top:10px">
-        Tip: Raising z₂ trades pressure for elevation.
       </div>
 
       <div class="poeBox" id="poeBox">
@@ -312,7 +305,7 @@
       <!-- AI Coach -->
       <div class="coachCard" id="coachCard">
         <div class="coachHeader">
-          <div class="title">🧠 AI Coach <span class="pill">adaptive quiz helper</span></div>
+          <div class="title">🧠 AI Coach</div>
           <div style="display:flex; gap:6px">
             <button id="coachExplain">Explain this scene</button>
             <button id="coachHint" class="secondary">Give me a hint</button>
@@ -321,7 +314,7 @@
         
         <div id="coachCfg" style="margin:6px 0 8px; display:grid; gap:6px">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cfe6ff;font-size:13px">
-            <input id="useChatGPT" type="checkbox"> Use ChatGPT for replies (via proxy)
+            <input id="useChatGPT" type="checkbox"> Use ChatGPT for replies
           </label>
           <div id="chatgptConfig" style="display:none; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
             <input id="chatEndpoint" placeholder="/api/chat" value="https://bernoulli-pipe-hgl-egl.onrender.com/api/chat"
