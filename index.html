@@ -79,6 +79,78 @@
   .coachLog .mjx-container { font-size: 1em; line-height: 1.25; }
   .coachMsg.coach, .coachMsg.user { color: inherit; }
 
+
+  /* Larger classroom-friendly layout and AI Coach chatbox */
+  html{font-size:18px}
+  body{line-height:1.55}
+  .wrap{max-width:1320px; padding:24px}
+  h1{font-size:34px; line-height:1.18; margin:10px 0 4px}
+  .sub{font-size:18px; line-height:1.5; margin-bottom:20px}
+  .grid{grid-template-columns:minmax(380px,420px) minmax(0,1fr); gap:20px}
+  .card{padding:18px; border-radius:18px}
+  .pill{font-size:15px; padding:7px 12px}
+  .row{gap:10px; margin:10px 0}
+  .row label{font-size:17px; line-height:1.35}
+  .row input[type=number]{width:104px; font-size:17px; padding:8px 10px}
+  button{font-size:17px; padding:12px 16px; border-radius:13px}
+  .canvasWrap{height:450px}
+  .legend{gap:14px; margin-top:12px}
+  .legend .key{font-size:15px}
+  .kpi,.trio{gap:12px; margin-top:12px}
+  .kpi .box,.tile{padding:13px}
+  .kpi .t,.tile .ttl{font-size:15.5px; line-height:1.35}
+  .kpi .v,.tile .val{font-size:23px; line-height:1.25}
+  .sectionHeader{margin-top:16px}
+  .choices{gap:10px}
+  .choices label{font-size:17px; padding:13px; line-height:1.35}
+  #qtext{font-size:19px; line-height:1.45}
+  .msg{font-size:16px; line-height:1.45}
+  .small{font-size:15px; line-height:1.45}
+
+  /* Larger AI Coach */
+  .coachCard{padding:18px; margin-top:18px; border-radius:18px}
+  .coachHeader{align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px}
+  .coachHeader .title{font-size:21px; line-height:1.3}
+  .coachHeader button{font-size:15px; padding:9px 12px}
+  #coachCfg{margin:10px 0 12px !important; gap:8px !important}
+  #coachCfg label{font-size:16px !important; line-height:1.4}
+  #chatgptConfig{gap:10px !important}
+  #chatgptConfig input{font-size:15px !important; padding:9px 11px !important}
+  .coachLog{height:clamp(320px,42vh,520px); font-size:17px; line-height:1.55; padding:16px; border-radius:14px}
+  .coachMsg{margin-bottom:14px}
+  .coachInput{grid-template-columns:minmax(0,1fr) 96px; gap:10px; margin-top:12px}
+  .coachInput input,.coachInput textarea,.monitorControls input{font-size:17px; line-height:1.45; padding:13px 14px; border-radius:10px}
+  .coachInput textarea{min-height:72px; resize:vertical; font-family:inherit}
+  .coachChips{gap:8px; margin-top:12px}
+  .chip{font-size:15px; padding:8px 12px}
+  .coachMonitor{margin-top:14px; padding:13px; border-radius:14px}
+  .monitorHeader button{font-size:15px; padding:8px 10px}
+  .signalTag{font-size:14px; padding:6px 10px}
+  .monitorDetails{font-size:15px}
+  .monitorControls{gap:10px; margin-top:10px}
+  .instructorSummary{max-height:260px; font-size:15px; line-height:1.45; padding:10px}
+  .poeBox{margin-top:14px; padding:12px; background:#0e1430; border:1px solid #223154; border-radius:14px}
+  .poeTitle{font-weight:700; margin-bottom:6px}
+  .poeGrid{display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0}
+  .poeGrid label{display:grid; gap:4px; color:var(--muted); font-size:15px; line-height:1.35}
+  .poeGrid select{background:#10183b; color:var(--ink); border:1px solid #2a3a68; border-radius:10px; padding:9px 10px; font-size:15px}
+  .poeActions{display:flex; gap:8px; flex-wrap:wrap}
+
+  @media (max-width: 980px){
+    .grid{grid-template-columns:1fr}
+    .wrap{padding:18px}
+    .coachLog{height:360px}
+    .canvasWrap{height:430px}
+  }
+  @media (max-width: 640px){
+    html{font-size:16px}
+    h1{font-size:28px}
+    .kpi,.trio,.choices{grid-template-columns:1fr}
+    .coachInput{grid-template-columns:1fr}
+    #chatgptConfig{grid-template-columns:1fr !important}
+    .coachLog{height:340px}
+  }
+
 </style>
 
 <!-- MathJax for LaTeX rendering in chat -->
@@ -166,6 +238,36 @@
       <div class="small" style="color:var(--muted); margin-top:10px">
         Tip: Raising z₂ trades pressure for elevation.
       </div>
+
+      <div class="poeBox" id="poeBox">
+        <div class="poeTitle">Predict–Observe–Explain</div>
+        <div class="small" style="color:var(--muted)">
+          Before moving a slider, predict how section 2 will change. Then move the slider and compare.
+        </div>
+        <div class="poeGrid">
+          <label>Prediction for v₂
+            <select id="poeV">
+              <option value="">Select one…</option>
+              <option value="increase">Increase</option>
+              <option value="decrease">Decrease</option>
+              <option value="same">Stay about the same</option>
+            </select>
+          </label>
+          <label>Prediction for p₂
+            <select id="poeP">
+              <option value="">Select one…</option>
+              <option value="increase">Increase</option>
+              <option value="decrease">Decrease</option>
+              <option value="same">Stay about the same</option>
+            </select>
+          </label>
+        </div>
+        <div class="poeActions">
+          <button id="poeRecord" class="secondary">Record prediction</button>
+          <button id="poeObserve">Observe & explain</button>
+        </div>
+        <div id="poeFeedback" class="msg">Choose predictions, record them, then change one slider.</div>
+      </div>
     </div>
 
     <!-- Visuals + KPIs -->
@@ -224,7 +326,7 @@
           <div id="chatgptConfig" style="display:none; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
             <input id="chatEndpoint" placeholder="/api/chat" value="https://bernoulli-pipe-hgl-egl.onrender.com/api/chat"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
-            <input id="chatModel" value="gpt-5.4-mini"
+            <input id="chatModel" value="gpt-4o-mini"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
             <input id="chatTemp" type="number" step="0.1" min="0" max="2" value="0.2"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
@@ -239,7 +341,7 @@
           <div class="chip" data-q="Challenge me">Challenge me</div>
         </div>
         <div class="coachInput">
-          <input id="coachQ" type="text" placeholder="Ask a question (e.g., ‘Why does pressure drop when the pipe narrows?’)" />
+          <textarea id="coachQ" rows="3" placeholder="Ask a question (e.g., ‘Why does pressure drop when the pipe narrows?’) — press Enter to send, Shift+Enter for a new line"></textarea>
           <button id="coachSend">Ask</button>
         </div>
 
@@ -598,8 +700,74 @@ const $ = id => document.getElementById(id);
     style:'glass', // fixed to glass (closed top)
     inQuiz:false, score:0, seen:0, current:{}, selection:null,
     quizWeights:{...DEFAULT_QUIZ_WEIGHTS}, quizSignal:null,
+    poe:{active:false, before:null, prediction:null},
     t:0
   };
+
+  // --- Predict–Observe–Explain mode ---
+  const trendWord = value => ({increase:'increase', decrease:'decrease', same:'stay about the same'}[value] || value);
+  function poeSnapshot(){
+    const R = compute();
+    return {
+      D1:state.D1, D2:state.D2, v1:state.v1, p1kPa:state.p1kPa, z2:state.z2,
+      v2:R.v2, p2kPa:R.p2/1000
+    };
+  }
+  function poeTrend(before, after, key){
+    const delta = after[key] - before[key];
+    const tol = key === 'p2kPa' ? 0.5 : Math.max(0.01, Math.abs(before[key])*0.01);
+    if (delta > tol) return 'increase';
+    if (delta < -tol) return 'decrease';
+    return 'same';
+  }
+  function poeChangedControls(before, after){
+    const labels = {
+      D1:'D₁', D2:'D₂', v1:'v₁', p1kPa:'p₁', z2:'z₂'
+    };
+    return ['D1','D2','v1','p1kPa','z2']
+      .filter(k => Math.abs(after[k] - before[k]) > 1e-9)
+      .map(k => `${labels[k]}: ${fmt(before[k], k==='p1kPa'?0:2)} → ${fmt(after[k], k==='p1kPa'?0:2)}`);
+  }
+  function recordPoePrediction(){
+    const vPred = $('poeV')?.value;
+    const pPred = $('poeP')?.value;
+    if(!vPred || !pPred){
+      $('poeFeedback').innerHTML = '<span class="wrong">Please select both predictions first.</span>';
+      return;
+    }
+    state.poe = {active:true, before:poeSnapshot(), prediction:{v2:vPred, p2kPa:pPred}};
+    $('poeFeedback').innerHTML = `Prediction recorded: v₂ will ${trendWord(vPred)}; p₂ will ${trendWord(pPred)}. Now move a slider, then click <strong>Observe & explain</strong>.`;
+  }
+  function observePoe(){
+    if(!state.poe?.active || !state.poe.before){
+      $('poeFeedback').innerHTML = '<span class="wrong">Record a prediction before observing.</span>';
+      return;
+    }
+    const before = state.poe.before;
+    const after = poeSnapshot();
+    const actual = {v2:poeTrend(before, after, 'v2'), p2kPa:poeTrend(before, after, 'p2kPa')};
+    const pred = state.poe.prediction;
+    const changed = poeChangedControls(before, after);
+    const vOk = pred.v2 === actual.v2;
+    const pOk = pred.p2kPa === actual.p2kPa;
+    const notes = [];
+    if(after.D2 !== before.D2) notes.push(after.D2 < before.D2 ? 'Smaller D₂ reduces area, so continuity raises v₂.' : 'Larger D₂ increases area, so continuity lowers v₂.');
+    if(after.D1 !== before.D1 || after.v1 !== before.v1) notes.push('Changing D₁ or v₁ changes the flow rate Q, which also changes v₂.');
+    if(after.z2 !== before.z2) notes.push(after.z2 > before.z2 ? 'Raising z₂ uses more elevation head, which tends to lower p₂.' : 'Lowering z₂ releases elevation head, which tends to raise p₂.');
+    if(after.p1kPa !== before.p1kPa) notes.push('Changing p₁ shifts the pressure level and therefore affects p₂ directly.');
+    notes.push('Bernoulli links the observation: pressure head, velocity head, and elevation head trade off when losses are neglected.');
+
+    const summary = [
+      `<strong>Observed change:</strong> ${changed.length ? changed.join('; ') : 'no slider changed'}.`,
+      `${vOk ? '✅' : '❌'} v₂ prediction: you chose <strong>${trendWord(pred.v2)}</strong>; observed <strong>${trendWord(actual.v2)}</strong> (${fmt(before.v2)} → ${fmt(after.v2)} m/s).`,
+      `${pOk ? '✅' : '❌'} p₂ prediction: you chose <strong>${trendWord(pred.p2KPa || pred.p2kPa)}</strong>; observed <strong>${trendWord(actual.p2kPa)}</strong> (${fmt(before.p2kPa,1)} → ${fmt(after.p2kPa,1)} kPa).`,
+      `<strong>Explain:</strong> ${notes.join(' ')}`
+    ];
+    const html = summary.join('<br>');
+    $('poeFeedback').innerHTML = html;
+    coachSay('Predict–Observe–Explain:<br>' + html);
+    state.poe.active = false;
+  }
 
   // Bind
   const link=(slider, numeric, key)=>{
@@ -616,7 +784,8 @@ const $ = id => document.getElementById(id);
     const set=(id,val)=>{ $(id).value=val; $(id+'n')?.value && ($(id+'n').value=val); };
     $('rho').value=1000; $('g').value=9.81;
     set('D1',0.10); set('D2',0.05); set('v1',1.0); set('p1',180); set('z2',2.0);
-    state.score=0; state.seen=0; updateScore(); stopQuiz(); computeAndRender();
+    state.score=0; state.seen=0; state.poe={active:false, before:null, prediction:null}; updateScore(); stopQuiz(); computeAndRender();
+    if($('poeFeedback')) $('poeFeedback').textContent='Choose predictions, record them, then change one slider.';
   });
 
   $('startQuiz').addEventListener('click', ()=> state.inQuiz? stopQuiz() : startQuiz());
@@ -772,7 +941,7 @@ const $ = id => document.getElementById(id);
 
     // Labels near right
     ctx.fillStyle = '#7bdfff';
-    ctx.font = '13px system-ui';
+    ctx.font = '15px system-ui';
     ctx.fillText('HGL', x2 - 36, yHead((HGL1+HGL2)/2) - 6);
     ctx.fillStyle = '#ff6b6b';
     ctx.fillText('EGL', x2 - 36, yHead((EGL1+EGL2)/2) - 6);
@@ -910,7 +1079,7 @@ const $ = id => document.getElementById(id);
     ctx.stroke();
 
     // Section tags
-    ctx.fillStyle='#cbe2ff'; ctx.font='16px system-ui';
+    ctx.fillStyle='#cbe2ff'; ctx.font='18px system-ui';
     ctx.fillText('Section 1', x1-34, y1 - r1 - 16);
     ctx.fillText('Section 2', x2-34, y2 - r2 - 16);
 
@@ -920,9 +1089,9 @@ const $ = id => document.getElementById(id);
       ctx.beginPath(); ctx.arc(x,y,rr,start,end); ctx.strokeStyle='#20355f'; ctx.lineWidth=10; ctx.stroke();
       const frac = Math.max(0, Math.min(1, val/max));
       ctx.beginPath(); ctx.arc(x,y,rr,start, start + (end-start)*frac); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.stroke();
-      ctx.fillStyle='#b9c3df'; ctx.font='14px system-ui'; ctx.textAlign='center';
+      ctx.fillStyle='#b9c3df'; ctx.font='16px system-ui'; ctx.textAlign='center';
       ctx.fillText(label, x, y+rr+12);
-      ctx.fillStyle='#ffffff'; ctx.font='bold 16px system-ui';
+      ctx.fillStyle='#ffffff'; ctx.font='bold 18px system-ui';
       ctx.fillText((val).toFixed(0), x, y+4);
     }
     function velArrow(x,y,vel,color){
@@ -930,13 +1099,13 @@ const $ = id => document.getElementById(id);
       ctx.strokeStyle=color; ctx.lineWidth=3;
       ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+L,y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x+L,y); ctx.lineTo(x+L-8,y-5); ctx.lineTo(x+L-8,y+5); ctx.closePath(); ctx.fillStyle=color; ctx.fill();
-      ctx.fillStyle='#b9c3df'; ctx.font='13px system-ui'; ctx.fillText('v', x-10, y+3);
+      ctx.fillStyle='#b9c3df'; ctx.font='15px system-ui'; ctx.fillText('v', x-12, y+4);
     }
     function elevMark(x, yBase, z, color){
       const yRef=H*0.92;
       ctx.strokeStyle='#253a6a'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(x, yRef); ctx.lineTo(x, yBase); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle=color; ctx.font='14px system-ui'; ctx.textAlign='center';
+      ctx.fillStyle=color; ctx.font='16px system-ui'; ctx.textAlign='center';
       ctx.fillText(`z=${z.toFixed(2)} m`, x, yRef+14);
     }
 
@@ -949,7 +1118,7 @@ const $ = id => document.getElementById(id);
     elevMark(x2, y2, state.z2, '#ffd166');
 
     // Labels
-    ctx.fillStyle='#b9c3df'; ctx.font='14px system-ui'; ctx.textAlign='left';
+    ctx.fillStyle='#b9c3df'; ctx.font='16px system-ui'; ctx.textAlign='left';
     ctx.fillText('pressure', x1-86, y1-r1-86);
     ctx.fillText('velocity', x1-86, y1+r1+52);
     ctx.textAlign='right';
@@ -983,7 +1152,7 @@ const $ = id => document.getElementById(id);
 
   async function sendChatGPT(userQuestion, source='typed'){
     const endpoint = document.getElementById('chatEndpoint')?.value || '/api/chat';
-    const model = document.getElementById('chatModel')?.value || 'gpt-5.4-mini';
+    const model = document.getElementById('chatModel')?.value || 'gpt-4o-mini';
     const temperature = parseFloat(document.getElementById('chatTemp')?.value || '0.2');
     const scene = sceneContext();
 
@@ -1060,7 +1229,10 @@ const $ = id => document.getElementById(id);
   coachHintBtn.addEventListener('click', ()=>{ logStudentQuestion('Give me a hint', 'button-hint'); hint(); });
   coachSendBtn.addEventListener('click', ()=> askCoachQuestion(coachQ.value, 'typed'));
 coachQ.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){ coachSendBtn.click(); }
+    if(e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      coachSendBtn.click();
+    }
   });
   coachChips.forEach(ch=> ch.addEventListener('click', ()=>{
     const q = ch.getAttribute('data-q') || ch.textContent;
@@ -1069,6 +1241,8 @@ coachQ.addEventListener('keydown', (e)=>{
   document.getElementById('refreshQuizSignal')?.addEventListener('click', ()=> refreshQuizSignal(true));
   document.getElementById('loadQuestionSummary')?.addEventListener('click', loadQuestionSummary);
   document.getElementById('downloadQuestions')?.addEventListener('click', downloadQuestionCsv);
+  document.getElementById('poeRecord')?.addEventListener('click', recordPoePrediction);
+  document.getElementById('poeObserve')?.addEventListener('click', observePoe);
 
   // Start coach
   bootCoach();
