@@ -276,16 +276,6 @@
 <span class="key" style="margin-left:auto;color:#9ddcff">Flow streak color = local speed</span>
       </div>
 
-      <div class="kpi">
-        <div class="box"><div class="t">Downstream speed v₂</div><div class="v" id="k_v2">—</div></div>
-        <div class="box"><div class="t">Downstream gauge pressure p₂</div><div class="v" id="k_p2">—</div></div>
-        <div class="box"><div class="t">Flow rate Q</div><div class="v" id="k_Q">—</div></div>
-      </div>
-      <div class="kpi" style="margin-top:10px">
-        <div class="box"><div class="t">Manometer Δh (p₁−p₂)</div><div class="v" id="k_mano">—</div></div>
-        <div class="box"><div class="t">Pitot at section 2 (Δhₚ)</div><div class="v" id="k_pitot">—</div></div>
-        <div class="box"><div class="t">Bernoulli check |Δ( p/ρg + v²/2g + z )|</div><div class="v" id="k_bal">—</div></div>
-      </div>
 
       <div class="sectionHeader"><div class="pill">Section 1</div><div class="small" style="color:var(--muted)">z₁ = 0 m (reference)</div></div>
       <div class="trio">
@@ -748,6 +738,7 @@ const $ = id => document.getElementById(id);
     ];
     const html = summary.join('<br>');
     $('poeFeedback').innerHTML = html;
+    // Keep POE feedback inside the Predict–Observe–Explain module only.
     state.poe.active = false;
   }
 
@@ -847,12 +838,6 @@ const $ = id => document.getElementById(id);
 
   function computeAndRender(){
     const R=compute();
-    $('k_v2').textContent= R.v2.toFixed(2)+' m/s';
-    $('k_p2').textContent= (R.p2/1000).toFixed(0)+' kPa';
-    $('k_Q').textContent = (R.Q*1000).toFixed(2)+' L/s';
-    $('k_mano').textContent= R.dhMano.toFixed(2)+' m';
-    $('k_pitot').textContent= R.dhPitot.toFixed(2)+' m';
-    $('k_bal').textContent = R.dHead.toFixed(3)+' m';
     $('s1_p').textContent= state.p1kPa.toFixed(0)+' kPa';
     $('s1_v').textContent= state.v1.toFixed(2)+' m/s';
     $('s1_z').textContent= state.z1.toFixed(2)+' m';
