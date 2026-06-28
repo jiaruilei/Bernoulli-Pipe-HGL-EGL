@@ -31,6 +31,7 @@ app.use(cors({
 // attach a Render Persistent Disk and set QUESTION_LOG_DIR to that mounted path.
 const LOG_DIR = process.env.QUESTION_LOG_DIR || "/tmp/bernoulli-question-logs";
 const LOG_FILE = path.join(LOG_DIR, "student-questions.jsonl");
+const CHAT_LOG_FILE = process.env.CHAT_LOG_FILE || path.join(LOG_DIR, "ai-coach-chat-history.jsonl");
 const ANALYTICS_LIMIT = Number.parseInt(process.env.QUESTION_ANALYTICS_LIMIT || "1000", 10);
 const MAX_RECENT = Number.parseInt(process.env.MAX_RECENT_QUESTIONS || "40", 10);
 const INSTRUCTOR_TOKEN = process.env.INSTRUCTOR_TOKEN || "";
@@ -101,6 +102,12 @@ function sanitizeQuestion(text) {
     .replace(/\b\d{8,}\b/g, "[number]");
 }
 
+function sanitizeChatText(text, max = 4000) {
+  return truncate(text, max)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+    .replace(/\b\d{8,}\b/g, "[number]");
+}
+
 function sanitizeId(text) {
   return truncate(text, 120).replace(/[^a-zA-Z0-9._:-]/g, "_");
 }
@@ -153,6 +160,19 @@ async function readQuestionRecords(limit = ANALYTICS_LIMIT) {
   }
 }
 
+async function readChatRecords(limit = Number.MAX_SAFE_INTEGER) {
+  try {
+    const text = await fs.readFile(CHAT_LOG_FILE, "utf8");
+    const lines = text.trim().split("\n").filter(Boolean);
+    return lines.slice(-limit).map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+}
+
 async function recordQuestion({ question, source = "unknown", sessionId = "", requestId = "", scene = "" }) {
   const cleanQuestion = sanitizeQuestion(question);
   if (!cleanQuestion) return null;
@@ -183,13 +203,54 @@ async function recordQuestion({ question, source = "unknown", sessionId = "", re
   return record;
 }
 
+async function recordCoachChat({
+  question,
+  reply,
+  source = "chatgpt-coach",
+  sessionId = "",
+  requestId = "",
+  scene = "",
+  classification = null,
+  model = "",
+}) {
+  const cleanQuestion = sanitizeQuestion(question);
+  const cleanReply = sanitizeChatText(reply, 4000);
+  if (!cleanQuestion && !cleanReply) return null;
+
+  const derived = classification?.topics?.length && classification?.quizTypes?.length
+    ? classification
+    : classifyQuestion(cleanQuestion);
+
+  const record = {
+    id: crypto.randomUUID(),
+    ts: new Date().toISOString(),
+    sessionId: sanitizeId(sessionId),
+    requestId: sanitizeId(requestId),
+    source: sanitizeId(source || "chatgpt-coach"),
+    model: sanitizeId(model),
+    question: cleanQuestion,
+    reply: cleanReply,
+    topics: derived.topics,
+    quizTypes: derived.quizTypes,
+  };
+
+  if (STORE_SCENE_CONTEXT && scene) record.scene = sanitizeChatText(scene, 1000);
+  await appendJsonl(CHAT_LOG_FILE, record);
+  return record;
+}
+
 function summarize(records) {
   const topicCounts = {};
   const quizTypeCounts = Object.fromEntries(QUIZ_TYPES.map((type) => [type, 0]));
 
   for (const record of records) {
-    const topics = Array.isArray(record.topics) && record.topics.length ? record.topics : classifyQuestion(record.question || "").topics;
-    const quizTypes = Array.isArray(record.quizTypes) && record.quizTypes.length ? record.quizTypes : classifyQuestion(record.question || "").quizTypes;
+    const topics = Array.isArray(record.topics) && record.topics.length
+      ? record.topics
+      : classifyQuestion(record.question || "").topics;
+
+    const quizTypes = Array.isArray(record.quizTypes) && record.quizTypes.length
+      ? record.quizTypes
+      : classifyQuestion(record.question || "").quizTypes;
 
     for (const topic of topics) topicCounts[topic] = (topicCounts[topic] || 0) + 1;
     for (const quizType of quizTypes) {
@@ -199,14 +260,22 @@ function summarize(records) {
 
   const maxCount = Math.max(1, ...Object.values(quizTypeCounts));
   const quizWeights = {};
+
   for (const quizType of QUIZ_TYPES) {
     // Keep every quiz type alive, but give asked-about topics up to about 5x priority.
-    quizWeights[quizType] = records.length ? Number((1 + (quizTypeCounts[quizType] / maxCount) * 4).toFixed(2)) : 1;
+    quizWeights[quizType] = records.length
+      ? Number((1 + (quizTypeCounts[quizType] / maxCount) * 4).toFixed(2))
+      : 1;
   }
 
   const recommendedQuizTypes = [...QUIZ_TYPES]
     .sort((a, b) => quizWeights[b] - quizWeights[a])
-    .map((type) => ({ type, label: QUIZ_LABELS[type], weight: quizWeights[type], count: quizTypeCounts[type] }));
+    .map((type) => ({
+      type,
+      label: QUIZ_LABELS[type],
+      weight: quizWeights[type],
+      count: quizTypeCounts[type],
+    }));
 
   const recent = records.slice(-MAX_RECENT).reverse().map((record) => ({
     ts: record.ts,
@@ -229,11 +298,15 @@ function summarize(records) {
 }
 
 function requireInstructor(req, res, next) {
-  if (!INSTRUCTOR_TOKEN) return next();
-  const provided = req.get("x-instructor-token") || req.query.token || "";
-  if (provided !== INSTRUCTOR_TOKEN) {
-    return res.status(401).json({ error: "Instructor token required" });
+  if (!INSTRUCTOR_TOKEN) {
+    return res.status(500).json({ error: "Server missing INSTRUCTOR_TOKEN" });
   }
+
+  const provided = req.get("x-instructor-token") || "";
+  if (!provided || provided !== INSTRUCTOR_TOKEN) {
+    return res.status(401).json({ error: "Instructor token required or incorrect" });
+  }
+
   next();
 }
 
@@ -242,7 +315,7 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-// --- Health check (make sure Render's Health Check Path is set to this)
+// --- Health check
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 // Public endpoint used by the web page to let aggregate student questions guide quiz mode.
@@ -268,7 +341,14 @@ app.post("/api/questions/log", async (req, res) => {
       requestId: req.body?.requestId || "",
       scene: req.body?.scene || "",
     });
-    res.json({ ok: true, recorded: Boolean(record), classification: record ? { topics: record.topics, quizTypes: record.quizTypes } : null });
+
+    res.json({
+      ok: true,
+      recorded: Boolean(record),
+      classification: record
+        ? { topics: record.topics, quizTypes: record.quizTypes }
+        : null,
+    });
   } catch (err) {
     console.error("Question log error:", err);
     res.status(500).json({ error: "Question log error" });
@@ -276,7 +356,6 @@ app.post("/api/questions/log", async (req, res) => {
 });
 
 // Instructor endpoint: returns recent raw questions plus counts.
-// Set INSTRUCTOR_TOKEN in Render to protect it.
 app.get("/api/questions/summary", requireInstructor, async (req, res) => {
   try {
     const records = await readQuestionRecords();
@@ -293,9 +372,18 @@ app.get("/api/questions/export.csv", requireInstructor, async (req, res) => {
     const records = await readQuestionRecords(Number.MAX_SAFE_INTEGER);
     const rows = [
       ["timestamp", "session_id", "source", "topics", "quiz_types", "question"],
-      ...records.map((record) => [record.ts, record.sessionId, record.source, record.topics, record.quizTypes, record.question]),
+      ...records.map((record) => [
+        record.ts,
+        record.sessionId,
+        record.source,
+        record.topics,
+        record.quizTypes,
+        record.question,
+      ]),
     ];
+
     const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", "attachment; filename=bernoulli-student-questions.csv");
     res.send(csv);
@@ -305,7 +393,7 @@ app.get("/api/questions/export.csv", requireInstructor, async (req, res) => {
   }
 });
 
-// Instructor endpoint: clear the log when testing or starting a new class activity.
+// Instructor endpoint: clear the question log when testing or starting a new class activity.
 app.post("/api/questions/reset", requireInstructor, async (req, res) => {
   try {
     await fs.rm(LOG_FILE, { force: true });
@@ -317,16 +405,68 @@ app.post("/api/questions/reset", requireInstructor, async (req, res) => {
   }
 });
 
-// --- ChatGPT proxy. Also logs the student's question so it can guide future quiz questions.
+// Instructor endpoint: download full AI Coach chat history from /api/chat.
+app.get("/api/chat/export.csv", requireInstructor, async (req, res) => {
+  try {
+    const records = await readChatRecords();
+
+    const rows = [
+      [
+        "timestamp",
+        "session_id",
+        "request_id",
+        "source",
+        "model",
+        "topics",
+        "quiz_types",
+        "question",
+        "reply",
+        "scene",
+      ],
+      ...records.map((record) => [
+        record.ts,
+        record.sessionId,
+        record.requestId,
+        record.source,
+        record.model,
+        record.topics,
+        record.quizTypes,
+        record.question,
+        record.reply,
+        record.scene || "",
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=bernoulli-ai-coach-chat-history.csv");
+    res.send(csv);
+  } catch (err) {
+    console.error("Chat export error:", err);
+    res.status(500).json({ error: "Chat export error" });
+  }
+});
+
+// --- ChatGPT proxy. Also logs the student's question and AI reply.
 app.post("/api/chat", async (req, res) => {
   try {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+    }
 
-    const { model = "gpt-5.4-mini", temperature = 0.2, system = "", messages = [] } = req.body || {};
+    const {
+      model = "gpt-5.4-mini",
+      temperature = 0.2,
+      system = "",
+      messages = [],
+    } = req.body || {};
+
     const question = extractQuestionFromBody(req.body);
 
     let classification = null;
+
     try {
       const record = await recordQuestion({
         question,
@@ -335,25 +475,41 @@ app.post("/api/chat", async (req, res) => {
         requestId: req.body?.requestId || "",
         scene: req.body?.scene || "",
       });
-      if (record) classification = { topics: record.topics, quizTypes: record.quizTypes };
+
+      if (record) {
+        classification = {
+          topics: record.topics,
+          quizTypes: record.quizTypes,
+        };
+      }
     } catch (logErr) {
-      // Do not block tutoring if logging fails.
+      // Do not block tutoring if question logging fails.
       console.warn("Question logging failed:", logErr.message);
     }
 
     const chatMessages = [];
-    if (system) chatMessages.push({ role: "system", content: system });
+
+    if (system) {
+      chatMessages.push({ role: "system", content: system });
+    }
+
     for (const m of messages) {
-      if (m?.role && m?.content) chatMessages.push({ role: m.role, content: m.content });
+      if (m?.role && m?.content) {
+        chatMessages.push({ role: m.role, content: m.content });
+      }
     }
 
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, temperature, messages: chatMessages }),
+      body: JSON.stringify({
+        model,
+        temperature,
+        messages: chatMessages,
+      }),
     });
 
     if (!r.ok) {
@@ -362,7 +518,25 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const data = await r.json();
-    res.json({ reply: data?.choices?.[0]?.message?.content ?? "", classification });
+    const reply = data?.choices?.[0]?.message?.content ?? "";
+
+    try {
+      await recordCoachChat({
+        question,
+        reply,
+        source: req.body?.source || "chatgpt-coach",
+        sessionId: req.body?.sessionId || "",
+        requestId: req.body?.requestId || "",
+        scene: req.body?.scene || "",
+        classification,
+        model,
+      });
+    } catch (chatLogErr) {
+      // Do not block tutoring if chat-history logging fails.
+      console.warn("Chat-history logging failed:", chatLogErr.message);
+    }
+
+    res.json({ reply, classification });
   } catch (err) {
     console.error("Proxy error:", err);
     res.status(500).json({ error: "Proxy error" });
@@ -371,10 +545,10 @@ app.post("/api/chat", async (req, res) => {
 
 // --- Start
 const port = process.env.PORT || 3000;
+
 app.listen(port, () => {
   console.log(`AI coach proxy listening on :${port}`);
   console.log(`Health check at: http://localhost:${port}/api/health`);
   console.log(`Student-question log: ${LOG_FILE}`);
+  console.log(`AI-coach chat log: ${CHAT_LOG_FILE}`);
 });
-
-
