@@ -342,7 +342,7 @@
           <div id="chatgptConfig" style="display:none !important; gap:8px; grid-template-columns:2fr 1fr 1fr; align-items:center">
             <input id="chatEndpoint" placeholder="/api/chat" value="https://bernoulli-pipe-hgl-egl.onrender.com/api/chat"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
-            <input id="chatModel" value="gpt-4o-mini"
+            <input id="chatModel" value="gpt-5.4-mini"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
             <input id="chatTemp" type="number" step="0.1" min="0" max="2" value="0.2"
                    style="background:#0e1430;border:1px solid #223154;color:#e9f3ff;border-radius:8px;padding:6px 8px">
@@ -1192,7 +1192,7 @@ const $ = id => document.getElementById(id);
 
   async function sendChatGPT(userQuestion, source='typed'){
     const endpoint = document.getElementById('chatEndpoint')?.value || '/api/chat';
-    const model = document.getElementById('chatModel')?.value || 'gpt-4o-mini';
+    const model = document.getElementById('chatModel')?.value || 'gpt-5.4-mini';
     const temperature = parseFloat(document.getElementById('chatTemp')?.value || '0.2');
     const scene = sceneContext();
 
