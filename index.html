@@ -367,6 +367,15 @@
             <button id="refreshQuizSignal" class="secondary">Refresh focus</button>
           </div>
           <div id="questionSignal" class="signalRows"></div>
+
+          <details class="monitorDetails" id="coachChatExportPanel">
+            <summary>Instructor export: AI Coach chat history</summary>
+            <div class="monitorControls">
+              <input id="instructorToken" type="password" placeholder="Instructor token">
+              <button id="downloadCoachChat" class="secondary">Download chat CSV</button>
+            </div>
+            <div id="chatExportStatus" class="instructorSummary">Enter the instructor token, then download the server-side AI Coach chat log.</div>
+          </details>
         </div>
       </div>
 
@@ -584,6 +593,36 @@ const $ = id => document.getElementById(id);
       if(box) box.textContent = err.message || 'Could not load question summary.';
     }
   }
+
+  async function downloadCoachChatCsv(){
+    const token = $('instructorToken')?.value?.trim();
+    const box = $('chatExportStatus');
+    if(!token){
+      if(box) box.textContent = 'Enter instructor token first.';
+      return;
+    }
+    try{
+      if(box) box.textContent = 'Downloading…';
+      const res = await fetch(apiUrl('/api/chat/export.csv'), {
+        headers: {'x-instructor-token': token}
+      });
+      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
+      if(!res.ok) throw new Error('Could not download AI Coach chat CSV.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bernoulli-ai-coach-chat-history.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if(box) box.textContent = 'Downloaded.';
+    }catch(err){
+      if(box) box.textContent = err.message || 'Could not download AI Coach chat CSV.';
+    }
+  }
+
   async function downloadQuestionCsv(){
     const token = $('instructorToken')?.value?.trim();
     const headers = token ? {'x-instructor-token': token} : {};
@@ -1242,6 +1281,7 @@ coachQ.addEventListener('keydown', (e)=>{
   document.getElementById('refreshQuizSignal')?.addEventListener('click', ()=> refreshQuizSignal(true));
   document.getElementById('loadQuestionSummary')?.addEventListener('click', loadQuestionSummary);
   document.getElementById('downloadQuestions')?.addEventListener('click', downloadQuestionCsv);
+  document.getElementById('downloadCoachChat')?.addEventListener('click', downloadCoachChatCsv);
   document.getElementById('poeRecord')?.addEventListener('click', recordPoePrediction);
   document.getElementById('poeObserve')?.addEventListener('click', observePoe);
 
