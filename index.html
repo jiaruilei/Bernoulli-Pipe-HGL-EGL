@@ -329,10 +329,6 @@
       <div class="coachCard" id="coachCard">
         <div class="coachHeader">
           <div class="title">🧠 AI Coach</div>
-          <div style="display:flex; gap:6px">
-            <button id="coachExplain">Explain this scene</button>
-            <button id="coachHint" class="secondary">Give me a hint</button>
-          </div>
         </div>
         
         <div id="coachCfg" style="margin:6px 0 8px; display:none !important; gap:6px">
@@ -1230,8 +1226,6 @@ const $ = id => document.getElementById(id);
 
 
   // Coach wiring
-  const coachExplainBtn = document.getElementById('coachExplain');
-  const coachHintBtn = document.getElementById('coachHint');
   const coachSendBtn = document.getElementById('coachSend');
   const coachQ = document.getElementById('coachQ');
   const coachChips = document.querySelectorAll('.coachChips .chip');
@@ -1265,8 +1259,6 @@ const $ = id => document.getElementById(id);
     }
     if(coachQ) coachQ.value='';
   }
-  coachExplainBtn.addEventListener('click', ()=>{ logStudentQuestion('Explain this scene', 'button-explain'); explainScene(); });
-  coachHintBtn.addEventListener('click', ()=>{ logStudentQuestion('Give me a hint', 'button-hint'); hint(); });
   coachSendBtn.addEventListener('click', ()=> askCoachQuestion(coachQ.value, 'typed'));
 coachQ.addEventListener('keydown', (e)=>{
     if(e.key==='Enter' && !e.shiftKey){
