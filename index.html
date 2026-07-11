@@ -82,11 +82,9 @@
   .recentQ{border-top:1px dashed #223154; padding-top:6px; margin-top:6px}
   @media (max-width: 760px){ .monitorControls{grid-template-columns:1fr} }
 
-
   /* MathJax tune for dark coach area */
   .coachLog .mjx-container { font-size: 1em; line-height: 1.25; }
   .coachMsg.coach, .coachMsg.user { color: inherit; }
-
 
   /* Larger classroom-friendly layout and AI Coach chatbox */
   html{font-size:18px}
@@ -374,7 +372,6 @@
           </details>
         </div>
       </div>
-
 
     </div>
   </div>
@@ -1222,8 +1219,6 @@ const $ = id => document.getElementById(id);
     refreshQuizSignal(false);
     return data.reply || data.choices?.[0]?.message?.content || data.output_text || '(no reply)';
   }
-
-
 
   // Coach wiring
   const coachSendBtn = document.getElementById('coachSend');
