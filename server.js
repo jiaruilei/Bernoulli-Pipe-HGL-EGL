@@ -73,9 +73,9 @@ const TOPIC_RULES = [
   },
   {
     key: "bernoulli-heads",
-    label: "Bernoulli / HGL / EGL",
+    label: "Bernoulli",
     quizTypes: ["p2kPa", "dhMano", "dhPitot"],
-    patterns: [/bernoulli/i, /\bhgl\b/i, /\begl\b/i, /head/i, /energy/i, /total\s*head/i],
+    patterns: [/bernoulli/i, /head/i, /energy/i],
   },
   {
     key: "manometer",
