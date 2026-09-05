@@ -260,7 +260,6 @@
         <!-- Quiz area -->
         <div class="card" id="quizCard" style="margin-top:0; display:none">
           <div class="pill">Quiz Mode</div>
-          <div id="adaptiveQuizNote" class="msg">Adaptive quiz is using a balanced mix until student questions are logged.</div>
           <div class="quiz">
             <div id="qtext" style="font-weight:600"></div>
             <div class="choices" id="choices"></div>
@@ -440,8 +439,6 @@ const $ = id => document.getElementById(id);
 
     const focusEl = $('quizFocus');
     if(focusEl) focusEl.textContent = focusText;
-    const noteEl = $('adaptiveQuizNote');
-    if(noteEl) noteEl.textContent = total ? `Quiz mix: ${focusText}.` : 'Quiz mix: balanced.';
 
     const rows = $('questionSignal');
     if(rows){
