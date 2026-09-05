@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Bernoulli Pipe</title>
+<title>Bernoulli (Week 5)</title>
 <style>
   /* Visual theme shared with the CE2134 hydrostatic labs. */
   :root{
@@ -15,27 +15,27 @@
     --shadow:0 16px 42px rgba(15,23,42,.10);
   }
   *{box-sizing:border-box}
-  html{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:16px}
+  html{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:18px}
   body{margin:0; min-height:100vh; padding:22px; color:var(--ink); font-family:inherit; line-height:1.45; background:radial-gradient(circle at 8% 4%,rgba(56,189,248,.08),transparent 24rem),var(--bg)}
   button,input,select,textarea{font:inherit}
   button{cursor:pointer}
   button:disabled{cursor:not-allowed; opacity:.55}
   .wrap{width:min(1320px,100%); margin:0 auto; overflow:hidden; border:1px solid #e2e8f0; border-radius:22px; background:var(--panel); box-shadow:var(--shadow)}
-  h1{margin:0; padding:22px; border-bottom:1px solid var(--line); font-size:clamp(23px,2.5vw,31px); line-height:1.15}
-  .sub{color:var(--muted); font-size:14px; margin-bottom:16px}
-  .grid{display:grid; grid-template-columns:330px minmax(0,1fr); gap:0; align-items:stretch}
+  h1{margin:0; padding:22px; border-bottom:1px solid var(--line); font-size:clamp(28px,3vw,36px); line-height:1.15}
+  .sub{color:var(--muted); font-size:17px; margin-bottom:16px}
+  .grid{display:grid; grid-template-columns:360px minmax(0,1fr); gap:0; align-items:stretch}
   .card{min-width:0; padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--panel)}
   #controls{border:0; border-right:1px solid var(--line); border-radius:0; background:#fbfdff}
   .vizCard{border:0; border-radius:0; background:#f8fafc}
-  .pill{display:inline-block; padding:5px 9px; border:1px solid #d7e0eb; border-radius:8px; color:#34445a; background:#f1f5f9; font-size:12px; font-weight:800}
+  .pill{display:inline-block; padding:5px 9px; border:1px solid #d7e0eb; border-radius:8px; color:#34445a; background:#f1f5f9; font-size:14px; font-weight:800}
   #controls > .pill,#quizCard > .pill{margin-bottom:7px; color:var(--blue-dark); border-color:#bfdbfe; background:#eff6ff}
   .row{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; margin:11px 0 6px}
-  .row label{font-size:13px; line-height:1.4; font-weight:700; color:#27364b}
-  .row input[type=number]{width:88px; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:14px; font-variant-numeric:tabular-nums}
+  .row label{font-size:16px; line-height:1.4; font-weight:700; color:#27364b}
+  .row input[type=number]{width:100px; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:17px; font-variant-numeric:tabular-nums}
   input[type=range]{width:100%; margin:6px 0 8px; accent-color:var(--accent)}
   input[type=radio],input[type=checkbox]{accent-color:var(--accent)}
   select:focus,input:focus,textarea:focus,button:focus-visible,summary:focus-visible{outline:3px solid rgba(37,99,235,.22); outline-offset:1px}
-  button{padding:10px 12px; border:1px solid var(--accent); border-radius:9px; background:var(--accent); color:#fff; font-size:14px; font-weight:800}
+  button{padding:10px 12px; border:1px solid var(--accent); border-radius:9px; background:var(--accent); color:#fff; font-size:17px; font-weight:800}
   button:hover{background:var(--blue-dark)}
   button.secondary{border-color:#b9c8da; background:#fff; color:#233651}
   button.secondary:hover{background:#f0f5fb}
@@ -50,39 +50,39 @@
   .visualQuizRow #quizCard .choices{grid-template-columns:1fr}
   .quizActions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .legend{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
-  .legend .key{display:flex; align-items:center; gap:5px; color:var(--muted); font-size:12px}
+  .legend .key{display:flex; align-items:center; gap:5px; color:var(--muted); font-size:14px}
   .swatch{display:inline-block; width:10px; height:10px; border-radius:3px}
   .sP{background:var(--pCol)} .sV{background:var(--vCol)} .sZ{background:var(--zCol)}
   .kpi,.trio{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px}
   .kpi .box,.tile{min-width:0; padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:#fff}
-  .kpi .t,.tile .ttl{font-size:12px; font-weight:700; color:var(--muted)}
-  .kpi .v,.tile .val{margin-top:3px; color:#172b4d; font-size:20px; font-weight:750; font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
+  .kpi .t,.tile .ttl{font-size:14px; font-weight:700; color:var(--muted)}
+  .kpi .v,.tile .val{margin-top:3px; color:#172b4d; font-size:25px; font-weight:750; font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
   .sectionHeader{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:16px}
-  .sectionHeader .pill{padding:0; border:0; background:transparent; color:#34445a; font-size:12px; letter-spacing:.06em; text-transform:uppercase}
-  .sectionHeader .small{font-size:12px; text-align:right}
+  .sectionHeader .pill{padding:0; border:0; background:transparent; color:#34445a; font-size:14px; letter-spacing:.06em; text-transform:uppercase}
+  .sectionHeader .small{font-size:14px; text-align:right}
   .quiz{display:grid; grid-template-columns:1fr; gap:10px}
   .choices{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-  .choices label{display:flex; align-items:center; gap:8px; padding:10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; cursor:pointer; font-size:14px}
+  .choices label{display:flex; align-items:center; gap:8px; padding:10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; cursor:pointer; font-size:17px}
   .choices label:hover{border-color:#93b4ef; background:#f8fbff}
   .choices label:has(input:checked){border-color:var(--accent); background:#eff6ff; color:var(--blue-dark)}
-  #qtext{font-size:16px; line-height:1.5}
-  .msg{margin-top:6px; color:var(--muted); font-size:13px; line-height:1.5}
+  #qtext{font-size:18px; line-height:1.5}
+  .msg{margin-top:6px; color:var(--muted); font-size:16px; line-height:1.5}
   .right{color:var(--good)} .wrong{color:var(--bad)}
-  .small{font-size:13px; line-height:1.45}
+  .small{font-size:16px; line-height:1.45}
   .row .select{width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink)}
 
-  /* Coach, prediction, and instructor panels retain their existing layout and controls. */
+  /* Coach and instructor panels retain their existing layout and controls. */
   .coachCard{position:relative; margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(135deg,#f8fbff,#eef5ff)}
   .coachHeader{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px}
-  .coachHeader .title{display:flex; align-items:center; gap:10px; color:#172b4d; font-size:19px; font-weight:800}
+  .coachHeader .title{display:flex; align-items:center; gap:10px; color:#172b4d; font-size:23px; font-weight:800}
   .coach-icon{display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:12px; color:#fff; background:linear-gradient(135deg,#2563eb,#7c3aed); box-shadow:0 8px 18px rgba(37,99,235,.2)}
   .coach-icon svg{display:block; width:22px; height:22px}
-  .coachHeader button{padding:8px 10px; font-size:12px}
+  .coachHeader button{padding:8px 10px; font-size:14px}
   #coachCfg{margin:10px 0 12px !important; gap:8px !important}
-  #coachCfg label{font-size:13px !important; line-height:1.4}
+  #coachCfg label{font-size:16px !important; line-height:1.4}
   #chatgptConfig{gap:10px !important}
-  #chatgptConfig input{min-width:0; font-size:13px !important; padding:9px 10px !important}
-  .coachLog{height:340px; overflow:auto; padding:12px; border:1px solid #d7e2ef; border-radius:11px; background:#fff; font-size:14px; line-height:1.45}
+  #chatgptConfig input{min-width:0; font-size:16px !important; padding:9px 10px !important}
+  .coachLog{height:380px; overflow:auto; padding:12px; border:1px solid #d7e2ef; border-radius:11px; background:#fff; font-size:17px; line-height:1.45}
   .coachMsg{width:fit-content; max-width:88%; margin-bottom:9px; padding:9px 11px; border-radius:11px; overflow-wrap:anywhere}
   .coachMsg.coach{color:#1e3a8a; border:1px solid #dbeafe; background:#eff6ff}
   .coachMsg.user{margin-left:auto; color:#fff; background:var(--accent)}
@@ -90,31 +90,24 @@
   .coachMsg mjx-container{max-width:100%; overflow-x:auto; overflow-y:hidden}
   .coachMsg mjx-container[display="true"]{margin:.12em 0 !important; text-align:left !important}
   .coachInput{display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:9px; margin-top:10px}
-  .coachInput input,.coachInput textarea,.monitorControls input{min-width:0; width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:14px; line-height:1.45}
+  .coachInput input,.coachInput textarea,.monitorControls input{min-width:0; width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:17px; line-height:1.45}
   .coachInput textarea{min-height:72px; resize:vertical}
   .coachChips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
-  .chip{padding:7px 10px; border:1px solid #bdd4f5; border-radius:8px; background:#fff; color:var(--blue-dark); font-size:12px; font-weight:700; cursor:pointer}
+  .chip{padding:7px 10px; border:1px solid #bdd4f5; border-radius:8px; background:#fff; color:var(--blue-dark); font-size:14px; font-weight:700; cursor:pointer}
   .chip:hover{background:#eff6ff; border-color:#93b4ef}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
   .coachMonitor{margin-top:14px; padding:13px; border:1px solid #d7e2ef; border-radius:11px; background:#f8fbff}
   .monitorHeader{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap}
-  .monitorHeader button{padding:7px 9px; font-size:12px}
+  .monitorHeader button{padding:7px 9px; font-size:14px}
   .signalRows{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
-  .signalTag{display:inline-flex; gap:6px; align-items:center; padding:5px 8px; border:1px solid #dbe5f2; border-radius:8px; background:#eaf1f9; color:#53657b; font-size:11px}
+  .signalTag{display:inline-flex; gap:6px; align-items:center; padding:5px 8px; border:1px solid #dbe5f2; border-radius:8px; background:#eaf1f9; color:#53657b; font-size:13px}
   .signalTag strong{color:#34445a}
-  .monitorDetails{margin-top:10px; color:var(--muted); font-size:13px}
+  .monitorDetails{margin-top:10px; color:var(--muted); font-size:16px}
   .monitorDetails summary{cursor:pointer; color:#233651; font-weight:700}
   .monitorControls{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; margin-top:10px}
-  .monitorControls button{font-size:12px}
-  .instructorSummary{max-height:260px; overflow:auto; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:9px; background:#fff; font-size:13px; line-height:1.45}
+  .monitorControls button{font-size:14px}
+  .instructorSummary{max-height:260px; overflow:auto; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:9px; background:#fff; font-size:16px; line-height:1.45}
   .recentQ{border-top:1px solid var(--line); padding-top:6px; margin-top:6px}
-  .poeBox{margin-top:18px; padding:13px; border:1px solid #d7e2ef; border-radius:11px; background:#f4f7fb}
-  .poeTitle{margin-bottom:6px; color:#233651; font-size:14px; font-weight:800}
-  .poeGrid{display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0}
-  .poeGrid label{display:grid; gap:5px; color:#27364b; font-size:13px; font-weight:700; line-height:1.4}
-  .poeGrid select{width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:14px}
-  .poeActions{display:flex; gap:8px; flex-wrap:wrap}
-  .poeActions button{padding:9px 10px; font-size:12px}
   @media (max-width:1250px){
     .vizCard.quizActive .visualQuizRow{grid-template-columns:1fr}
     .vizCard.quizActive #quizCard{margin-top:12px !important}
@@ -122,7 +115,7 @@
   }
   @media (max-width:1050px){
     body{padding:10px}
-    .grid{grid-template-columns:290px minmax(0,1fr)}
+    .grid{grid-template-columns:320px minmax(0,1fr)}
     .canvasWrap{height:410px}
     .monitorControls{grid-template-columns:1fr}
   }
@@ -143,8 +136,8 @@
     .card,.coachCard{padding:14px}
     .kpi,.trio{gap:6px}
     .kpi .box,.tile{padding:9px 7px}
-    .kpi .v,.tile .val{font-size:17px}
-    .kpi .t,.tile .ttl{font-size:11px}
+    .kpi .v,.tile .val{font-size:21px}
+    .kpi .t,.tile .ttl{font-size:13px}
     .choices{grid-template-columns:1fr}
     .sectionHeader{align-items:flex-start}
     .canvasWrap,.vizCard.quizActive .canvasWrap{height:auto; aspect-ratio:2 / 1}
@@ -177,7 +170,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Bernoulli Pipe</h1>
+  <h1>Bernoulli (Week 5)</h1>
 
   <div class="grid">
     <!-- Controls -->
@@ -230,35 +223,6 @@
         <button id="startQuiz">Start Quiz</button>
       </div>
 
-      <div class="poeBox" id="poeBox">
-        <div class="poeTitle">Predict–Observe–Explain</div>
-        <div class="small" style="color:var(--muted)">
-          Before moving a slider, predict how section 2 will change. Then move the slider and compare.
-        </div>
-        <div class="poeGrid">
-          <label>Prediction for v₂
-            <select id="poeV">
-              <option value="">Select one…</option>
-              <option value="increase">Increase</option>
-              <option value="decrease">Decrease</option>
-              <option value="same">Stay about the same</option>
-            </select>
-          </label>
-          <label>Prediction for p₂
-            <select id="poeP">
-              <option value="">Select one…</option>
-              <option value="increase">Increase</option>
-              <option value="decrease">Decrease</option>
-              <option value="same">Stay about the same</option>
-            </select>
-          </label>
-        </div>
-        <div class="poeActions">
-          <button id="poeRecord" class="secondary">Record prediction</button>
-          <button id="poeObserve">Observe & explain</button>
-        </div>
-        <div id="poeFeedback" class="msg">Choose predictions, record them, then change one slider.</div>
-      </div>
     </div>
 
     <!-- Visuals + Quiz -->
@@ -719,74 +683,8 @@ const $ = id => document.getElementById(id);
     style:'glass', // fixed to glass (closed top)
     inQuiz:false, score:0, seen:0, current:{}, selection:null,
     quizWeights:{...DEFAULT_QUIZ_WEIGHTS}, quizSignal:null,
-    poe:{active:false, before:null, prediction:null},
     t:0
   };
-
-  // --- Predict–Observe–Explain mode ---
-  const trendWord = value => ({increase:'increase', decrease:'decrease', same:'stay about the same'}[value] || value);
-  function poeSnapshot(){
-    const R = compute();
-    return {
-      D1:state.D1, D2:state.D2, v1:state.v1, p1kPa:state.p1kPa, z2:state.z2,
-      v2:R.v2, p2kPa:R.p2/1000
-    };
-  }
-  function poeTrend(before, after, key){
-    const delta = after[key] - before[key];
-    const tol = key === 'p2kPa' ? 0.5 : Math.max(0.01, Math.abs(before[key])*0.01);
-    if (delta > tol) return 'increase';
-    if (delta < -tol) return 'decrease';
-    return 'same';
-  }
-  function poeChangedControls(before, after){
-    const labels = {
-      D1:'D₁', D2:'D₂', v1:'v₁', p1kPa:'p₁', z2:'z₂'
-    };
-    return ['D1','D2','v1','p1kPa','z2']
-      .filter(k => Math.abs(after[k] - before[k]) > 1e-9)
-      .map(k => `${labels[k]}: ${fmt(before[k], k==='p1kPa'?0:2)} → ${fmt(after[k], k==='p1kPa'?0:2)}`);
-  }
-  function recordPoePrediction(){
-    const vPred = $('poeV')?.value;
-    const pPred = $('poeP')?.value;
-    if(!vPred || !pPred){
-      $('poeFeedback').innerHTML = '<span class="wrong">Please select both predictions first.</span>';
-      return;
-    }
-    state.poe = {active:true, before:poeSnapshot(), prediction:{v2:vPred, p2kPa:pPred}};
-    $('poeFeedback').innerHTML = `Prediction recorded: v₂ will ${trendWord(vPred)}; p₂ will ${trendWord(pPred)}. Now move a slider, then click <strong>Observe & explain</strong>.`;
-  }
-  function observePoe(){
-    if(!state.poe?.active || !state.poe.before){
-      $('poeFeedback').innerHTML = '<span class="wrong">Record a prediction before observing.</span>';
-      return;
-    }
-    const before = state.poe.before;
-    const after = poeSnapshot();
-    const actual = {v2:poeTrend(before, after, 'v2'), p2kPa:poeTrend(before, after, 'p2kPa')};
-    const pred = state.poe.prediction;
-    const changed = poeChangedControls(before, after);
-    const vOk = pred.v2 === actual.v2;
-    const pOk = pred.p2kPa === actual.p2kPa;
-    const notes = [];
-    if(after.D2 !== before.D2) notes.push(after.D2 < before.D2 ? 'Smaller D₂ reduces area, so continuity raises v₂.' : 'Larger D₂ increases area, so continuity lowers v₂.');
-    if(after.D1 !== before.D1 || after.v1 !== before.v1) notes.push('Changing D₁ or v₁ changes the flow rate Q, which also changes v₂.');
-    if(after.z2 !== before.z2) notes.push(after.z2 > before.z2 ? 'Raising z₂ uses more elevation head, which tends to lower p₂.' : 'Lowering z₂ releases elevation head, which tends to raise p₂.');
-    if(after.p1kPa !== before.p1kPa) notes.push('Changing p₁ shifts the pressure level and therefore affects p₂ directly.');
-    notes.push('Bernoulli links the observation: pressure head, velocity head, and elevation head trade off when losses are neglected.');
-
-    const summary = [
-      `<strong>Observed change:</strong> ${changed.length ? changed.join('; ') : 'no slider changed'}.`,
-      `${vOk ? '✅' : '❌'} v₂ prediction: you chose <strong>${trendWord(pred.v2)}</strong>; observed <strong>${trendWord(actual.v2)}</strong> (${fmt(before.v2)} → ${fmt(after.v2)} m/s).`,
-      `${pOk ? '✅' : '❌'} p₂ prediction: you chose <strong>${trendWord(pred.p2KPa || pred.p2kPa)}</strong>; observed <strong>${trendWord(actual.p2kPa)}</strong> (${fmt(before.p2kPa,1)} → ${fmt(after.p2kPa,1)} kPa).`,
-      `<strong>Explain:</strong> ${notes.join(' ')}`
-    ];
-    const html = summary.join('<br>');
-    $('poeFeedback').innerHTML = html;
-    // Keep POE feedback inside the Predict–Observe–Explain module only.
-    state.poe.active = false;
-  }
 
   // Bind
   const link=(slider, numeric, key)=>{
@@ -803,8 +701,7 @@ const $ = id => document.getElementById(id);
     const set=(id,val)=>{ $(id).value=val; $(id+'n')?.value && ($(id+'n').value=val); };
     $('rho').value=1000; $('g').value=9.81;
     set('D1',0.10); set('D2',0.05); set('v1',1.0); set('p1',180); set('z2',2.0);
-    state.score=0; state.seen=0; state.poe={active:false, before:null, prediction:null}; updateScore(); stopQuiz(); computeAndRender();
-    if($('poeFeedback')) $('poeFeedback').textContent='Choose predictions, record them, then change one slider.';
+    state.score=0; state.seen=0; updateScore(); stopQuiz(); computeAndRender();
   });
 
   $('startQuiz').addEventListener('click', ()=> state.inQuiz? stopQuiz() : startQuiz());
@@ -964,10 +861,10 @@ const $ = id => document.getElementById(id);
 
     // Labels near right
     ctx.fillStyle = '#0e7490';
-    ctx.font = '15px system-ui';
-    ctx.fillText('HGL', x2 - 36, yHead((HGL1+HGL2)/2) - 6);
+    ctx.font='18px system-ui';
+    ctx.fillText('HGL', x2 - 36, yHead((HGL1+HGL2)/2) + 22);
     ctx.fillStyle = '#dc2626';
-    ctx.fillText('EGL', x2 - 36, yHead((EGL1+EGL2)/2) - 6);
+    ctx.fillText('EGL', x2 - 36, yHead((EGL1+EGL2)/2) - 10);
   }
 
 
@@ -1102,7 +999,7 @@ const $ = id => document.getElementById(id);
     ctx.stroke();
 
     // Section tags
-    ctx.fillStyle='#233651'; ctx.font='18px system-ui';
+    ctx.fillStyle='#233651'; ctx.font='21px system-ui';
     ctx.fillText('Section 1', x1-34, y1 - r1 - 3);
     ctx.fillText('Section 2', x2-34, y2 - r2 - 3);
 
@@ -1112,9 +1009,9 @@ const $ = id => document.getElementById(id);
       ctx.beginPath(); ctx.arc(x,y,rr,start,end); ctx.strokeStyle='#dce4ee'; ctx.lineWidth=10; ctx.stroke();
       const frac = Math.max(0, Math.min(1, val/max));
       ctx.beginPath(); ctx.arc(x,y,rr,start, start + (end-start)*frac); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.stroke();
-      ctx.fillStyle='#5d6b7d'; ctx.font='16px system-ui'; ctx.textAlign='center';
+      ctx.fillStyle='#5d6b7d'; ctx.font='19px system-ui'; ctx.textAlign='center';
       ctx.fillText(label, x, y+rr+12);
-      ctx.fillStyle='#142033'; ctx.font='bold 18px system-ui';
+      ctx.fillStyle='#142033'; ctx.font='bold 21px system-ui';
       ctx.fillText((val).toFixed(0), x, y+4);
     }
     function velArrow(x,y,vel,color){
@@ -1122,13 +1019,13 @@ const $ = id => document.getElementById(id);
       ctx.strokeStyle=color; ctx.lineWidth=3;
       ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+L,y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x+L,y); ctx.lineTo(x+L-8,y-5); ctx.lineTo(x+L-8,y+5); ctx.closePath(); ctx.fillStyle=color; ctx.fill();
-      ctx.fillStyle='#5d6b7d'; ctx.font='15px system-ui'; ctx.fillText('v', x-12, y+4);
+      ctx.fillStyle='#5d6b7d'; ctx.font='18px system-ui'; ctx.fillText('v', x-12, y+4);
     }
     function elevMark(x, yBase, z, color){
       const yRef=H*0.92;
       ctx.strokeStyle='#cbd6e4'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(x, yRef); ctx.lineTo(x, yBase); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle=color; ctx.font='16px system-ui'; ctx.textAlign='center';
+      ctx.fillStyle=color; ctx.font='19px system-ui'; ctx.textAlign='center';
       ctx.fillText(`z=${z.toFixed(2)} m`, x, yRef+14);
     }
 
@@ -1141,7 +1038,7 @@ const $ = id => document.getElementById(id);
     elevMark(x2, y2, state.z2, '#b45309');
 
     // Labels
-    ctx.fillStyle='#5d6b7d'; ctx.font='16px system-ui'; ctx.textAlign='left';
+    ctx.fillStyle='#5d6b7d'; ctx.font='19px system-ui'; ctx.textAlign='left';
     ctx.fillText('velocity', x1-86, y1+r1+52);
     ctx.textAlign='right';
     ctx.textAlign='left';
@@ -1264,8 +1161,6 @@ coachQ.addEventListener('keydown', (e)=>{
   document.getElementById('loadQuestionSummary')?.addEventListener('click', loadQuestionSummary);
   document.getElementById('downloadQuestions')?.addEventListener('click', downloadQuestionCsv);
   document.getElementById('downloadCoachChat')?.addEventListener('click', downloadCoachChatCsv);
-  document.getElementById('poeRecord')?.addEventListener('click', recordPoePrediction);
-  document.getElementById('poeObserve')?.addEventListener('click', observePoe);
 
   // Start coach
   bootCoach();
