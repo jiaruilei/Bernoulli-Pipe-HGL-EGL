@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {QUIZ_TYPES,calculateScene,quizAnswer,isCorrectAnswer,practiceWeights,selectionProbabilities,
-  chooseTopic,recentHistory,answerChoices,validateAttempt} from '../quiz-practice.js';
+import {QUIZ_TYPES,calculateScene,quizAnswer,isCorrectAnswer,sessionTopics,sessionTopicCounts,
+  sessionProbabilities,chooseSessionTopic,answerChoices,validateAttempt} from '../quiz-practice.js';
 
 const scene={rho:1000,g:9.81,D1:.1,D2:.05,v1:1,p1kPa:180,z1:0,z2:2};
-const history=(type,correct,count,start=0)=>Array.from({length:count},(_,i)=>({questionId:`q-${start+i}`,type,correct,at:start+i}));
 
 test('the existing physical quantities and quiz units are preserved',()=>{
   const r=calculateScene(scene);
@@ -15,34 +14,37 @@ test('the existing physical quantities and quiz units are preserved',()=>{
   assert.equal(quizAnswer('dhPitot',scene).unit,'m');
 });
 
-test('new learners begin evenly; mistakes raise focus and success lowers it',()=>{
-  assert.deepEqual(Object.values(selectionProbabilities('auto',[])),[.2,.2,.2,.2,.2]);
-  const wrong=history('dhMano',false,1);
-  assert.ok(practiceWeights(wrong).dhMano>practiceWeights([]).dhMano);
-  assert.ok(selectionProbabilities('auto',wrong).dhMano>.2);
-  assert.ok(practiceWeights(history('dhMano',true,10)).dhMano<practiceWeights([]).dhMano);
-  const improving=[...history('dhMano',false,4),...history('dhMano',true,6,4)];
-  assert.ok(practiceWeights(improving).dhMano<practiceWeights(history('dhMano',false,4)).dhMano);
-  for(const value of Object.values(selectionProbabilities('auto',improving))) assert.ok(value>0);
+test('sessions start evenly and only asked-about topics gain priority',()=>{
+  assert.deepEqual(Object.values(sessionProbabilities()),[.2,.2,.2,.2,.2]);
+  const counts=sessionTopicCounts();
+  for(const type of sessionTopics('Please explain the manometer')) counts[type]++;
+  assert.ok(sessionProbabilities(counts).dhMano>.2);
+  assert.ok(sessionProbabilities({...counts,dhMano:2}).dhMano>sessionProbabilities(counts).dhMano);
+  const probabilities=sessionProbabilities({dhMano:1000000});
+  assert.ok(Math.abs(Object.values(probabilities).reduce((a,b)=>a+b,0)-1)<1e-12);
+  for(const value of Object.values(probabilities)) assert.ok(value>=.08);
+  assert.deepEqual(sessionTopics('Thank you'),[]);
 });
 
-test('old evidence and duplicate submissions cannot dominate a profile',()=>{
-  const attempts=[...history('v2',false,100),...history('v2',true,10,100)];
-  assert.equal(recentHistory(attempts).length,10);
-  assert.deepEqual(practiceWeights(attempts),practiceWeights(history('v2',true,10,100)));
-  assert.equal(recentHistory([...attempts,...attempts]).length,10);
-  assert.equal(recentHistory([null,{type:'unknown'},...history('Q',false,1)]).length,1);
+test('topic matching handles displayed symbols and corrupted session counts',()=>{
+  assert.ok(sessionTopics('Check: v₂ = 2').includes('v2'));
+  assert.ok(sessionTopics('Why is p₂ lower?').includes('p2kPa'));
+  assert.deepEqual(sessionTopics('Pitot tube'),['dhPitot']);
+  assert.deepEqual(sessionTopics('Flow rate Q'),['Q']);
+  assert.deepEqual(sessionTopics('continuity'),['v2','Q']);
+  assert.deepEqual(sessionTopics('manometer manometer manometer'),['dhMano']);
+  assert.deepEqual(Object.values(sessionTopicCounts({v2:-1,p2kPa:'5',dhMano:Infinity,Q:null})),[0,0,0,0,0]);
 });
 
-test('manual topics and balanced mode override learned weights without changing history',()=>{
-  const attempts=history('v2',false,10), before=JSON.stringify(attempts);
-  assert.deepEqual(Object.values(selectionProbabilities('balanced',attempts)),[.2,.2,.2,.2,.2]);
+test('weighted question selection follows current-session probabilities and retains all topics',()=>{
+  const counts={dhMano:10},probabilities=sessionProbabilities(counts),before=JSON.stringify(counts);
+  let lower=0;
   for(const type of QUIZ_TYPES){
-    assert.equal(selectionProbabilities(type,attempts)[type],1);
-    for(const random of [0,.15,.55,.999999]) assert.equal(chooseTopic(type,attempts,()=>random),type);
+    assert.equal(chooseSessionTopic(counts,()=>lower+probabilities[type]/2),type);
+    lower+=probabilities[type];
   }
-  assert.equal(JSON.stringify(attempts),before);
-  assert.ok(selectionProbabilities('auto',attempts).v2>.2);
+  assert.equal(JSON.stringify(counts),before);
+  assert.notEqual(chooseSessionTopic({},()=>.35),chooseSessionTopic(counts,()=>.35));
 });
 
 test('answer choices are distinct when displayed and have exactly one correct choice',()=>{
@@ -65,6 +67,7 @@ test('server grading validates input and derives its own correctness and questio
   const result=validateAttempt(input);
   assert.equal(result.correct,true); assert.equal(result.correctAnswer,4);
   assert.notEqual(result.question,input.question);
+  assert.equal(validateAttempt({...input,mode:'session'}).mode,'session');
   assert.equal(validateAttempt({...input,selectedAnswer:2}).correct,false);
   for(const patch of [{sessionId:''},{questionId:'=formula'},{mode:'other'},{type:'other'},
     {selectedAnswer:null},{selectedAnswer:Infinity},{scene:{...scene,D2:0}},{scene:{...scene,rho:'1000'}}]){

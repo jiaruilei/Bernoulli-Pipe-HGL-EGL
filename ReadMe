@@ -2,13 +2,14 @@
 
 Run `npm install`, then `npm start`. Run the calculation and API regression checks with `npm test`.
 
-## Personal quiz practice
+## Current-session quiz practice (Option A)
 
-- Automatic practice starts with an equal mix of the five taught topics. It uses first submissions from the current anonymous browser profile, never pooled chat questions.
-- The most recent 10 answers per topic contribute to the focus. Older answers within that window receive progressively less weight (factor 0.85). Balanced prior observations soften the effect of a single answer, and every topic retains a positive selection weight.
-- Students can override automatic selection with balanced practice or a specific topic. The choice applies to the next question. Answers in every mode contribute to the learner's subsequent automatic practice.
+- Each tab session starts with an equal mix of the five taught topics. Only questions the learner asks in that session influence subsequent quiz selection. Questions are matched to the taught topics locally, once per send, including when the AI proxy is unavailable.
+- Topic counts are held in `sessionStorage`: they survive a page reload within the tab session, without using other tabs, historical records, or the previous performance profile. A normally closed tab ends its session; browser session restoration may restore tab storage.
+- Selection combines 40% balanced review with 60% session topic counts, starting with one prior count per topic. Every topic remains available. Quiz answers are scored and recorded but do not change topic weights.
+- The focus panel, percentages, and manual topic selector are removed. **Start fresh** beside the coach title resets the session focus, anonymous identifier, chat display, scene, and quiz score. It does not delete server records or pending submissions. **Reset** continues to reset the scene and score only.
 - Each question is scored once. Skipped questions do not count as incorrect. The scene is fixed during a quiz question so its values match the question and recorded result.
-- Progress is saved in browser storage for this website, without a login or cross-device synchronization. New learner clears local practice and changes the anonymous identifier; it does not delete teaching records or queued submissions.
+- If tab storage is unavailable, the session still works in memory until the page is reloaded or closed. No account or cross-device synchronization is required.
 
 ## Teaching records
 

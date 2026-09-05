@@ -71,7 +71,7 @@
   .small{font-size:16px; line-height:1.45}
   .row .select{width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink)}
 
-  /* Coach and adaptive quiz focus. */
+  /* AI Coach. */
   .coachCard{position:relative; margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(135deg,#f8fbff,#eef5ff)}
   .coachHeader{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px}
   .coachHeader .title{display:flex; align-items:center; gap:10px; color:#172b4d; font-size:23px; font-weight:800}
@@ -97,24 +97,8 @@
   .chip{padding:7px 10px; border:1px solid #bdd4f5; border-radius:8px; background:#fff; color:var(--blue-dark); font-size:14px; font-weight:700; cursor:pointer}
   .chip:hover{background:#eff6ff; border-color:#93b4ef}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-  .practicePanel{margin:0 0 16px !important}
-  .practiceControls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:10px 0}
-  .practiceControls select{flex:1; min-width:0; max-width:100%; padding:8px; border:1px solid #cbd6e4; border-radius:8px; background:white; color:var(--ink); font:inherit}
-  .practiceControls label{font-weight:600}
-  .practiceNote,.mixLabel{margin-top:9px}
-  @media (max-width:600px){
-    .practiceControls{display:grid; grid-template-columns:minmax(0,1fr)}
-    .practiceControls select{width:100%}
-    .practiceControls button{justify-self:start}
-  }
   button[hidden]{display:none}
   input:disabled{opacity:.7}
-  .coachMonitor{margin-top:14px; padding:13px; border:1px solid #d7e2ef; border-radius:11px; background:#f8fbff}
-  .monitorHeader{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap}
-  .monitorHeader button{padding:7px 9px; font-size:14px}
-  .signalRows{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
-  .signalTag{display:inline-flex; gap:6px; align-items:center; padding:5px 8px; border:1px solid #dbe5f2; border-radius:8px; background:#eaf1f9; color:#53657b; font-size:13px}
-  .signalTag strong{color:#34445a}
   @media (max-width:1250px){
     .vizCard.quizActive .visualQuizRow{grid-template-columns:1fr}
     .vizCard.quizActive #quizCard{margin-top:12px !important}
@@ -233,26 +217,6 @@
 
     <!-- Visuals + Quiz -->
     <div class="card vizCard" id="visualCard">
-      <section class="coachMonitor practicePanel" aria-label="Quiz practice focus">
-        <div class="monitorHeader"><strong>Quiz focus: <span id="quizFocus"></span></strong></div>
-        <div class="practiceControls">
-          <label for="practiceMode">Practice mode</label>
-          <select id="practiceMode">
-            <option value="auto">Automatic — based on my answers</option>
-            <option value="balanced">Balanced practice</option>
-            <option value="v2">Continuity: velocity</option>
-            <option value="p2kPa">Bernoulli: pressure</option>
-            <option value="dhMano">Manometer</option>
-            <option value="dhPitot">Pitot tube</option>
-            <option value="Q">Flow rate</option>
-          </select>
-          <button id="newLearner" class="secondary">New learner</button>
-        </div>
-        <div class="small" id="practiceStatus" role="status"></div>
-        <div class="small mixLabel">Approximate next-question mix</div>
-        <div id="questionSignal" class="signalRows"></div>
-        <div class="small practiceNote" id="practiceStorageNote"></div>
-      </section>
       <div class="visualQuizRow">
         <div class="visualPanel">
           <div class="canvasWrap"><canvas id="viz" width="860" height="430"></canvas></div>
@@ -312,6 +276,7 @@
             </span>
             <span>Prof. Gary's AI Proxy</span>
           </div>
+          <button id="startFresh" class="secondary" title="Start a new practice session and clear the chat display and quiz score">Start fresh</button>
         </div>
         
         <div id="coachCfg" style="margin:6px 0 8px; display:none !important; gap:6px">
@@ -385,27 +350,10 @@ const $ = id => document.getElementById(id);
   }
   function fmt(x,n=2){ return Number(x).toFixed(n); }
 
-  const QUIZ_TYPE_LABELS = QuizPractice.QUIZ_LABELS;
-  let fallbackSessionId='';
-
   function escapeHtml(text){
     return String(text ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   }
-  function getSessionId(){
-    if(fallbackSessionId) return fallbackSessionId;
-    const key = 'bernoulliCoachSessionId';
-    try{
-      let id = localStorage.getItem(key);
-      if(!id){
-        const rand = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        id = `session-${rand}`;
-        localStorage.setItem(key, id);
-      }
-      return (fallbackSessionId=id);
-    }catch(e){
-      return fallbackSessionId || (fallbackSessionId=`session-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    }
-  }
+  function getSessionId(){ return practice.sessionId; }
   function newRequestId(){
     const rand = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2);
     return `req-${Date.now()}-${rand}`;
@@ -421,14 +369,13 @@ const $ = id => document.getElementById(id);
       return pathPart;
     }
   }
-  const PRACTICE_KEY='bernoulliPersonalPracticeV1';
+  const SESSION_KEY='bernoulliPracticeSessionV1';
   const PENDING_KEY='bernoulliPendingQuizAttemptsV1';
   let storageWorking=true;
   let memoryQueue=[];
   let uploading=false;
   let uploadFailed=false;
-  let practice=null;
-  practice=loadPractice();
+  let practice=loadPracticeSession();
 
   function readStored(key){
     try { return JSON.parse(localStorage.getItem(key)||'null'); }
@@ -438,17 +385,27 @@ const $ = id => document.getElementById(id);
     try { localStorage.setItem(key,JSON.stringify(value)); return true; }
     catch { storageWorking=false; return false; }
   }
-  function loadPractice(){
-    if(practice && !storageWorking) return practice;
-    const saved=readStored(PRACTICE_KEY);
-    if(saved && typeof saved.learnerId==='string' && /^[A-Za-z0-9_-]{1,120}$/.test(saved.learnerId)){
-      return {learnerId:saved.learnerId,
-        mode:QuizPractice.PRACTICE_MODES.includes(saved.mode)?saved.mode:'auto',
-        attempts:QuizPractice.recentHistory(Array.isArray(saved.attempts)?saved.attempts:[])};
-    }
-    return {learnerId:getSessionId(),mode:'auto',attempts:[]};
+  function freshPracticeSession(){
+    return {sessionId:'session-'+newRequestId(),topicCounts:QuizPractice.sessionTopicCounts()};
   }
-  function savePractice(){ writeStored(PRACTICE_KEY,practice); }
+  function loadPracticeSession(){
+    try {
+      const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');
+      if(saved && typeof saved.sessionId==='string' && /^[A-Za-z0-9_-]{1,120}$/.test(saved.sessionId)){
+        return {sessionId:saved.sessionId,topicCounts:QuizPractice.sessionTopicCounts(saved.topicCounts)};
+      }
+    } catch { /* Keep this session in memory when tab storage is unavailable. */ }
+    return freshPracticeSession();
+  }
+  function savePracticeSession(){
+    try { sessionStorage.setItem(SESSION_KEY,JSON.stringify(practice)); }
+    catch { /* Practice still works until the page is closed or reloaded. */ }
+  }
+  function recordSessionQuestion(question){
+    for(const type of QuizPractice.sessionTopics(question)) practice.topicCounts[type]++;
+    practice.topicCounts=QuizPractice.sessionTopicCounts(practice.topicCounts);
+    savePracticeSession();
+  }
   function pendingAttempts(){
     const saved=readStored(PENDING_KEY);
     const all=[...(Array.isArray(saved)?saved:[]),...memoryQueue];
@@ -466,9 +423,7 @@ const $ = id => document.getElementById(id);
       ? `${count} quiz ${count===1?'answer is':'answers are'} waiting to save${uploadFailed?'. Check your connection or retry.':'.'}`
       : 'First quiz submissions are recorded for teaching and learning support.';
     $('retryQuizSave').hidden=!count;
-    $('practiceStorageNote').textContent=storageWorking
-      ? 'Progress stays in this browser. Use New learner on a shared computer; saved teaching records are kept.'
-      : 'This browser cannot save progress after closing. Keep this page open while pending answers are sent.';
+    if(count && !storageWorking) $('quizSaveStatus').textContent+=' Keep this page open until saving finishes.';
   }
   async function flushQuizAttempts(){
     if(uploading) return;
@@ -494,73 +449,29 @@ const $ = id => document.getElementById(id);
     } catch { uploadFailed=true; }
     finally { uploading=false; renderSaveStatus(); }
   }
-  function renderPracticeFocus(message=''){
-    $('practiceMode').value=practice.mode;
-    const probabilities=QuizPractice.selectionProbabilities(practice.mode,practice.attempts);
-    const count=practice.attempts.length;
-    $('quizFocus').textContent=practice.mode==='auto'?'Automatic: based on your first answers':
-      practice.mode==='balanced'?'Balanced practice':QUIZ_TYPE_LABELS[practice.mode];
-    const rows=$('questionSignal'); rows.innerHTML='';
-    for(const type of QuizPractice.QUIZ_TYPES){
-      const tag=document.createElement('span'); tag.className='signalTag';
-      const name=document.createElement('strong'); name.textContent=QUIZ_TYPE_LABELS[type];
-      tag.append(name,` ${Math.round(probabilities[type]*100)}%`); rows.appendChild(tag);
-    }
-    $('practiceStatus').textContent=message || (practice.mode==='auto'
-      ? count?`Based on ${count} recent first ${count===1?'answer':'answers'} (up to 10 per topic). Mistakes increase practice; consistent success reduces it.`
-        :'Start with a balanced mix. Your first answer to each question updates your focus automatically.'
-      : 'Your selection determines the next question. These answers also inform future automatic practice.');
-    renderSaveStatus();
-  }
   async function logStudentQuestion(question,source='built-in-coach'){
     try {
       await fetch(apiUrl('/api/questions/log'),{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({question,source,sessionId:getSessionId(),requestId:newRequestId(),scene:sceneContext()})});
-    } catch { /* Chat logging never changes personal quiz focus. */ }
+    } catch { /* Session adaptation is already applied locally. */ }
   }
-  function chooseQuizType(){ return QuizPractice.chooseTopic(practice.mode,practice.attempts); }
-  function recordFirstAnswer(current,selectedAnswer,correct){
-    const saved=loadPractice();
-    if(saved.learnerId===practice.learnerId){
-      practice.attempts=QuizPractice.recentHistory([...saved.attempts,...practice.attempts]);
-    }
-    const at=Date.now();
-    practice.attempts=QuizPractice.recentHistory([...practice.attempts,
-      {questionId:current.questionId,type:current.askType,correct,at}]);
-    savePractice();
+  function chooseQuizType(){ return QuizPractice.chooseSessionTopic(practice.topicCounts); }
+  function recordFirstAnswer(current,selectedAnswer){
     savePending([...pendingAttempts(),{questionId:current.questionId,sessionId:current.learnerId,
-      type:current.askType,mode:current.mode,selectedAnswer,scene:current.scene,clientTimestamp:new Date(at).toISOString()}]);
-    renderPracticeFocus(); flushQuizAttempts();
-  }
-  function syncPracticeFromStorage(){
-    const next=loadPractice(), changedLearner=next.learnerId!==practice.learnerId;
-    if(!changedLearner) next.attempts=QuizPractice.recentHistory([...next.attempts,...practice.attempts]);
-    practice=next;
-    if(changedLearner){
-      fallbackSessionId=practice.learnerId;
-      state.score=0; state.seen=0; updateScore(); stopQuiz();
-      $('coachLog').innerHTML=''; bootCoach();
-    }
-    renderPracticeFocus();
+      type:current.askType,mode:current.mode,selectedAnswer,scene:current.scene,clientTimestamp:new Date().toISOString()}]);
+    renderSaveStatus(); flushQuizAttempts();
   }
   function setupPractice(){
-    savePractice(); renderPracticeFocus(); flushQuizAttempts();
-    $('practiceMode').addEventListener('change',event=>{
-      const selected=event.target.value;
-      syncPracticeFromStorage(); practice.mode=selected; savePractice();
-      renderPracticeFocus(state.inQuiz?'Selection updated. It applies when you press Next.':'');
-    });
-    $('newLearner').addEventListener('click',()=>{
-      fallbackSessionId='session-'+newRequestId();
-      try { localStorage.setItem('bernoulliCoachSessionId',fallbackSessionId); } catch { storageWorking=false; }
-      practice={learnerId:fallbackSessionId,mode:'auto',attempts:[]}; savePractice();
-      resetScene(); $('coachLog').innerHTML=''; bootCoach();
-      renderPracticeFocus('New learner started with balanced automatic practice.');
+    savePracticeSession(); renderSaveStatus(); flushQuizAttempts();
+    $('startFresh').addEventListener('click',()=>{
+      practice=freshPracticeSession(); savePracticeSession();
+      resetScene(); $('coachLog').innerHTML=''; $('coachQ').value='';
+      bootCoach(); coachSay('New practice session started.');
+      renderSaveStatus();
     });
     $('retryQuizSave').addEventListener('click',flushQuizAttempts);
     window.addEventListener('online',flushQuizAttempts);
     window.addEventListener('storage',event=>{
-      if(event.key===PRACTICE_KEY) syncPracticeFromStorage();
       if(event.key===PENDING_KEY){ memoryQueue=[]; renderSaveStatus(); }
     });
     setInterval(()=>{ if(pendingAttempts().length) flushQuizAttempts(); },30000);
@@ -683,7 +594,7 @@ const $ = id => document.getElementById(id);
   }
   $('startQuiz').addEventListener('click',()=>state.inQuiz?stopQuiz():startQuiz());
   function startQuiz(){
-    syncPracticeFromStorage(); state.inQuiz=true; setQuizControls(true);
+    state.inQuiz=true; setQuizControls(true);
     $('visualCard').classList.add('quizActive'); $('quizCard').style.display='block'; nextQuestion();
   }
   function stopQuiz(){
@@ -701,7 +612,7 @@ const $ = id => document.getElementById(id);
     const scene=Object.fromEntries(['rho','g','D1','D2','v1','p1kPa','z1','z2'].map(key=>[key,state[key]]));
     const answer=QuizPractice.quizAnswer(askType,scene);
     state.current={askType,scene,correct:answer.value,fmt:answer.format,questionId:newRequestId(),
-      learnerId:practice.learnerId,mode:practice.mode,answered:false};
+      learnerId:practice.sessionId,mode:'session',answered:false};
     const box=$('choices'); box.innerHTML='';
     QuizPractice.answerChoices(answer.value,answer.format).forEach((value,index)=>{
       const label=document.createElement('label'),input=document.createElement('input');
@@ -716,13 +627,12 @@ const $ = id => document.getElementById(id);
     const current=state.current;
     if(!state.inQuiz||current.answered) return;
     if(state.selection==null){ $('feedback').textContent='Choose an answer first.'; return; }
-    if(loadPractice().learnerId!==current.learnerId){ syncPracticeFromStorage(); return; }
     current.answered=true; $('submit').disabled=true;
     $('choices').querySelectorAll('input').forEach(input=>input.disabled=true);
     const correct=QuizPractice.isCorrectAnswer(state.selection,current.correct);
     state.seen++; if(correct) state.score++;
     $('feedback').textContent=(correct?'Correct! ':'Not quite. Correct is ')+current.fmt(current.correct)+'.';
-    updateScore(); recordFirstAnswer(current,state.selection,correct);
+    updateScore(); recordFirstAnswer(current,state.selection);
   });
   $('next').addEventListener('click',()=>{ if(state.inQuiz) nextQuestion(); });
 
@@ -1004,12 +914,13 @@ const $ = id => document.getElementById(id);
   const coachChips = document.querySelectorAll('.coachChips .chip');
 
   function bootCoach(){
-    coachSay('Hi! I’m Prof. Gary\'s AI Proxy. Quiz focus adapts to your first answers, or you can choose a practice topic. Try “Why does pressure drop?” or “Check: v2=1.5”.');
+    coachSay('Hi! I’m Prof. Gary\'s AI Proxy. Ask me about the flow, or try a quiz. Try “Why does pressure drop?” or “Check: v2=1.5”.');
   }
   async function askCoachQuestion(q, source='typed'){
     q = String(q || '').trim();
     if(!q) return;
-    const learnerAtRequest=practice.learnerId;
+    const learnerAtRequest=practice.sessionId;
+    recordSessionQuestion(q);
     userSay(q);
 
     const useChat = true;
@@ -1022,12 +933,12 @@ const $ = id => document.getElementById(id);
     try{
       coachSay('…');
       const reply = await sendChatGPT(q, source);
-      if(learnerAtRequest!==practice.learnerId) return;
+      if(learnerAtRequest!==practice.sessionId) return;
       const log = document.getElementById('coachLog');
       if (log && log.lastChild) log.lastChild.innerHTML = 'Coach: ' + reply;
       typesetEl(log.lastChild);
     }catch(err){
-      if(learnerAtRequest!==practice.learnerId) return;
+      if(learnerAtRequest!==practice.sessionId) return;
       const log = document.getElementById('coachLog');
       if(log && log.lastChild) log.lastChild.innerHTML = 'Coach: (proxy error, switching to built-in helper)';
       logStudentQuestion(q, `proxy-fallback-${source}`);
