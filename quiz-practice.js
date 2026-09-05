@@ -4,8 +4,8 @@ export const QUIZ_LABELS = Object.freeze({
   dhMano: 'Manometer', dhPitot: 'Pitot tube', Q: 'Flow rate',
 });
 export const QUIZ_TYPES = Object.freeze(Object.keys(QUIZ_LABELS));
-export const PRACTICE_MODES = Object.freeze(['auto', 'balanced', ...QUIZ_TYPES]);
-export const RECENT_PER_TOPIC = 10;
+// Keep previous mode names valid for older submissions waiting to upload.
+export const PRACTICE_MODES = Object.freeze(['session', 'auto', 'balanced', ...QUIZ_TYPES]);
 
 export function calculateScene({rho,g,D1,D2,v1,p1kPa,z1,z2}) {
   const A1=Math.PI*D1*D1/4, A2=Math.PI*D2*D2/4;
@@ -35,42 +35,34 @@ export function isCorrectAnswer(selected, correct) {
     Math.abs(selected-correct) <= Math.max(1e-6, Math.abs(correct)*0.02);
 }
 
-export function recentHistory(attempts=[]) {
-  const ids=new Set(), counts={};
-  return [...attempts].filter(a=>a && typeof a.questionId==='string' &&
-    QUIZ_TYPES.includes(a.type) && typeof a.correct==='boolean' && Number.isFinite(a.at))
-    .sort((a,b)=>b.at-a.at).filter(a=>{
-      if(ids.has(a.questionId) || (counts[a.type]||0)>=RECENT_PER_TOPIC) return false;
-      ids.add(a.questionId); counts[a.type]=(counts[a.type]||0)+1; return true;
-    }).reverse();
+export function sessionTopics(question) {
+  const text=String(question||'').normalize('NFKC');
+  const rules={
+    v2:/continuity|diameter|\barea\b|\bd[12]\b|\bv[12]\b|velocity|speed|narrow|widen/i,
+    p2kPa:/bernoulli|pressure|\bp[12]\b|elevation|\bz[12]\b|gauge|\bkpa\b/i,
+    dhMano:/manometer|\btaps?\b|delta\s*h|\bdh\b|Δh/i,
+    dhPitot:/pitot|stagnation|velocity\s*head/i,
+    Q:/flow\s*rate|discharge|\bq\b|continuity/i,
+  };
+  return QUIZ_TYPES.filter(type=>rules[type].test(text));
 }
 
-export function practiceWeights(attempts=[]) {
-  const history=recentHistory(attempts), weights={};
-  for(const type of QUIZ_TYPES) {
-    const recent=history.filter(a=>a.type===type).reverse();
-    let evidence=0, mistakes=0;
-    recent.forEach((a,index)=>{
-      const influence=0.85**index;
-      evidence+=influence; if(!a.correct) mistakes+=influence;
-    });
-    // Two balanced prior observations limit the effect of a single lucky or mistaken answer.
-    // Every topic retains a positive base weight, including after consistent success.
-    weights[type]=1+4*(mistakes+1)/(evidence+2);
-  }
-  return weights;
+export function sessionTopicCounts(counts={}) {
+  return Object.fromEntries(QUIZ_TYPES.map(type=>{
+    const value=counts?.[type];
+    return [type,Number.isSafeInteger(value)&&value>=0?Math.min(value,1000000):0];
+  }));
 }
 
-export function selectionProbabilities(mode, attempts=[]) {
-  if(!PRACTICE_MODES.includes(mode)) mode='auto';
-  const weights=mode==='auto'?practiceWeights(attempts):
-    Object.fromEntries(QUIZ_TYPES.map(type=>[type,mode==='balanced'||mode===type?1:0]));
-  const sum=Object.values(weights).reduce((a,b)=>a+b,0);
-  return Object.fromEntries(QUIZ_TYPES.map(type=>[type,weights[type]/sum]));
+export function sessionProbabilities(counts={}) {
+  const clean=sessionTopicCounts(counts);
+  const total=Object.values(clean).reduce((a,b)=>a+b,0);
+  // Start evenly, increase asked-about topics gradually, and retain mixed review.
+  return Object.fromEntries(QUIZ_TYPES.map(type=>[type,0.08+0.6*(clean[type]+1)/(total+5)]));
 }
 
-export function chooseTopic(mode, attempts, random=Math.random) {
-  const probabilities=selectionProbabilities(mode, attempts);
+export function chooseSessionTopic(counts, random=Math.random) {
+  const probabilities=sessionProbabilities(counts);
   let value=random();
   for(const type of QUIZ_TYPES) {
     if(probabilities[type]===0) continue;
