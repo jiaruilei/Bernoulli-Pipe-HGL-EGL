@@ -4,6 +4,7 @@ import cors from "cors";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+import { fileURLToPath } from "node:url";
 
 // --- Optional fetch polyfill for Node < 18 (Render should use >=18, but this is safer)
 if (typeof fetch === "undefined") {
@@ -25,6 +26,10 @@ app.use(cors({
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "x-instructor-token"],
 }));
+
+// Serve the simulation at the Render URL, independently of the working directory.
+const indexFile = fileURLToPath(new URL("./index.html", import.meta.url));
+app.get(["/", "/index.html"], (req, res) => res.sendFile(indexFile));
 
 // --- Student-question logging and quiz guidance ---------------------------
 // Render's normal filesystem may be reset on deploy/restart. For long-term logs,
