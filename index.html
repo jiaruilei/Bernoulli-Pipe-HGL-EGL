@@ -233,13 +233,13 @@
     <div class="card vizCard" id="visualCard">
       <div class="visualQuizRow">
         <div class="visualPanel">
-          <div class="canvasWrap"><canvas id="viz" width="860" height="430" role="img" aria-label="Pipe flow diagram. Pressure rings run clockwise from 0 to 500 kPa. Numerical values appear below."></canvas></div>
+          <div class="canvasWrap"><canvas id="viz" width="860" height="430" role="img" aria-label="Pipe flow diagram with tracer particles showing flow direction and speed. Pressure rings run clockwise from 0 to 500 kPa. Numerical values appear below."></canvas></div>
 
       <div class="legend">
         <span class="key"><span class="swatch sP"></span>Pressure p (rings: 0–500 kPa)</span>
         <span class="key"><span class="swatch sV"></span>Velocity v</span>
         <span class="key"><span class="swatch sZ"></span>Elevation z</span>
-<span class="key" style="margin-left:auto;color:#5d6b7d">Flow streak color = local speed</span>
+<span class="key" style="margin-left:auto;color:#5d6b7d">Tracer motion = local speed</span>
       </div>
 
 
@@ -650,18 +650,12 @@ const $ = id => document.getElementById(id);
     draw(R);
   }
 
-  // Color ramp: deep blue → cyan → near-white
-  function speedColor01(f){
-    f = Math.max(0, Math.min(1, f));
-    let r,g,b;
-    if (f < 0.6) {
-      const t = f/0.6;
-      r = 0; g = Math.round(90*(1-t) + 220*t); b = 255;
-    } else {
-      const t = (f-0.6)/0.4;
-      r = Math.round(230*t); g = Math.round(220*(1-t) + 255*t); b = 255;
-    }
-    return `rgb(${r},${g},${b})`;
+  // Equal progress through swept volume makes tracers accelerate where area
+  // decreases, following the same continuity relation as the numeric values.
+  function tracerPosition(progress,D1,D2){
+    if(Math.abs(D2-D1)<1e-9) return progress;
+    const diameter=Math.cbrt((1-progress)*D1**3+progress*D2**3);
+    return (diameter-D1)/(D2-D1);
   }
 
   const ctx=$('viz').getContext('2d');
@@ -676,7 +670,7 @@ const $ = id => document.getElementById(id);
   new ResizeObserver(resizeCanvas).observe(ctx.canvas);
 
   function draw(R){
-    const {D1,D2,z1,z2,v1,style}=state;
+    const {D1,D2,z1,z2}=state;
     const W=canvasWidth, H=canvasHeight;
     ctx.clearRect(0,0,W,H);
 
@@ -711,10 +705,10 @@ const $ = id => document.getElementById(id);
       ctx.closePath();
     }
 
-    // Outer body shading
+    // Translucent blue water leaves the small tracer particles easy to follow.
     pipeOuterPath();
     const bodyGrad = ctx.createLinearGradient(0, y1-r1, 0, y1+r1);
-    bodyGrad.addColorStop(0, '#2b5ea8'); bodyGrad.addColorStop(0.45, '#173b74'); bodyGrad.addColorStop(1, '#0d2a57');
+    bodyGrad.addColorStop(0, 'rgba(125,211,252,0.28)'); bodyGrad.addColorStop(0.45, 'rgba(56,189,248,0.18)'); bodyGrad.addColorStop(1, 'rgba(37,99,235,0.24)');
     ctx.fillStyle = bodyGrad; ctx.fill();
 
     // Specular sweep (cylindrical curvature)
@@ -733,10 +727,10 @@ const $ = id => document.getElementById(id);
     ctx.save();
     pipeOuterPath(); ctx.clip();
     const innerTop = ctx.createLinearGradient(0, y1-r1, 0, y1-r1+20);
-    innerTop.addColorStop(0,'rgba(0,0,0,0.35)'); innerTop.addColorStop(1,'rgba(0,0,0,0)');
+    innerTop.addColorStop(0,'rgba(37,99,235,0.10)'); innerTop.addColorStop(1,'rgba(37,99,235,0)');
     ctx.fillStyle = innerTop; ctx.fillRect(x1, y1-r1, (x2-x1), 24);
     const innerBot = ctx.createLinearGradient(0, y1+r1-20, 0, y1+r1);
-    innerBot.addColorStop(0,'rgba(0,0,0,0)'); innerBot.addColorStop(1,'rgba(0,0,0,0.30)');
+    innerBot.addColorStop(0,'rgba(37,99,235,0)'); innerBot.addColorStop(1,'rgba(37,99,235,0.10)');
     ctx.fillStyle = innerBot; ctx.fillRect(x1, y1+r1-24, (x2-x1), 24);
     ctx.restore();
 
@@ -745,44 +739,23 @@ const $ = id => document.getElementById(id);
     pipeOuterPath(0,0);
     ctx.clip();
 
-    // Flow streaklines (color by local speed, additive blend for glow)
-    const A1 = R.A1;
-    const v2 = R.v2;
-    const vMin = Math.min(v1, v2), vMax = Math.max(v1, v2);
-    state.t += (0.006 + v1*0.002);
-
-    const rows = 10;
-    const N = 70;
-    const amp = 10;
-
-    ctx.globalCompositeOperation = 'lighter';
-    for (let r=0; r<rows; r++) {
-      const fracY = (r+0.5)/rows;
-      for (let i=0; i<N; i++) {
-        const s = (i/N + (state.t + r*0.10))%1;
-        const yc = (1-s)*y1 + s*y2;
-        const rc = (1-s)*r1 + s*r2;
-        const topEdge = yc - rc;
-        const botEdge = yc + rc;
-        const yLine = topEdge + fracY*(botEdge-topEdge);
-
-        const Dloc = (1-s)*D1+s*D2;
-        const Aloc = Math.PI*Dloc*Dloc/4;
-        const vloc = v1 * (A1/Aloc);
-
-        const f = (vloc - vMin) / (vMax - vMin + 1e-9);
-        ctx.strokeStyle = speedColor01(f);
-        ctx.lineWidth = 0.9 + 1.4*f;
-
-        const x = x1 + s*(x2-x1) + amp*Math.sin(9*s + r*0.55 + i*0.05);
-        ctx.beginPath();
-        ctx.moveTo(x-6, yLine);
-        ctx.lineTo(x+6, yLine);
-        ctx.stroke();
-      }
+    // Sparse, filled tracer dots travel smoothly through the full pipe.
+    const count=Math.max(28,Math.min(48,Math.round((x2-x1)/12)));
+    ctx.fillStyle='#2563eb';
+    for(let i=0;i<count;i++){
+      const progress=(state.t+i/count)%1;
+      const s=tracerPosition(progress,D1,D2);
+      const yc=(1-s)*y1+s*y2,rc=(1-s)*r1+s*r2;
+      const lateral=((i*0.61803398875)%1-.5)*1.55;
+      const size=Math.min(1.8+(i%3)*.25,rc*.25);
+      ctx.globalAlpha=.65+(i%3)*.12;
+      ctx.beginPath();ctx.arc(x1+s*(x2-x1),yc+lateral*rc,size,0,Math.PI*2);ctx.fill();
     }
-    ctx.globalCompositeOperation = 'source-over';
     ctx.restore(); // end interior clip
+
+    ctx.strokeStyle='rgba(37,99,235,0.24)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x1,y1-r1);ctx.lineTo(x2,y2-r2);
+    ctx.moveTo(x1,y1+r1);ctx.lineTo(x2,y2+r2);ctx.stroke();
 
     // Front glass rims as OVALS (inlet & outlet) — now FILLED like water
     ctx.lineWidth=1.5;
@@ -790,21 +763,21 @@ const $ = id => document.getElementById(id);
     ctx.beginPath();
     ctx.ellipse(x1, y1, r1*0.5, r1*1.0, 0, 0, 2*Math.PI);
     let inletGrad = ctx.createLinearGradient(x1, y1-r1, x1, y1+r1);
-    inletGrad.addColorStop(0, 'rgba(91,166,255,0.60)');  // lighter blue
-    inletGrad.addColorStop(1, 'rgba(23,59,116,0.60)');   // darker blue
+    inletGrad.addColorStop(0, 'rgba(125,211,252,0.14)');
+    inletGrad.addColorStop(1, 'rgba(59,130,246,0.22)');
     ctx.fillStyle = inletGrad;
     ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.35)';
+    ctx.strokeStyle='rgba(37,99,235,0.28)';
     ctx.stroke();
     // Outlet ellipse (Section 2)
     ctx.beginPath();
     ctx.ellipse(x2, y2, r2*0.5, r2*1.0, 0, 0, 2*Math.PI);
     let outletGrad = ctx.createLinearGradient(x2, y2-r2, x2, y2+r2);
-    outletGrad.addColorStop(0, 'rgba(91,166,255,0.60)');
-    outletGrad.addColorStop(1, 'rgba(23,59,116,0.60)');
+    outletGrad.addColorStop(0, 'rgba(125,211,252,0.14)');
+    outletGrad.addColorStop(1, 'rgba(59,130,246,0.22)');
     ctx.fillStyle = outletGrad;
     ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.35)';
+    ctx.strokeStyle='rgba(37,99,235,0.28)';
     ctx.stroke();
 
     // Section tags
@@ -959,7 +932,17 @@ const $ = id => document.getElementById(id);
 
   // Start
   computeAndRender();
-  (function loop(){ draw(compute()); requestAnimationFrame(loop); })();
+  const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+  let previousFrame=null;
+  function loop(now){
+    if(previousFrame!==null && !document.hidden && !reducedMotion.matches){
+      const dt=Math.min((now-previousFrame)/1000,.05);
+      const meanDiameterSquared=(state.D1**2+state.D1*state.D2+state.D2**2)/3;
+      state.t=(state.t+dt*.10*state.v1*state.D1**2/meanDiameterSquared)%1;
+    }
+    previousFrame=now;draw(compute());requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
