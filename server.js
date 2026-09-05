@@ -5,6 +5,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "node:url";
+import { validateAttempt } from "./quiz-practice.js";
 
 // --- Optional fetch polyfill for Node < 18 (Render should use >=18, but this is safer)
 if (typeof fetch === "undefined") {
@@ -30,6 +31,7 @@ app.use(cors({
 // Serve the simulation at the Render URL, independently of the working directory.
 const indexFile = fileURLToPath(new URL("./index.html", import.meta.url));
 app.get(["/", "/index.html"], (req, res) => res.sendFile(indexFile));
+app.get("/quiz-practice.js", (req, res) => res.sendFile(fileURLToPath(new URL("./quiz-practice.js", import.meta.url))));
 
 // --- Student-question logging and quiz guidance ---------------------------
 // Render's normal filesystem may be reset on deploy/restart. For long-term logs,
@@ -37,6 +39,7 @@ app.get(["/", "/index.html"], (req, res) => res.sendFile(indexFile));
 const LOG_DIR = process.env.QUESTION_LOG_DIR || "/tmp/bernoulli-question-logs";
 const LOG_FILE = path.join(LOG_DIR, "student-questions.jsonl");
 const CHAT_LOG_FILE = process.env.CHAT_LOG_FILE || path.join(LOG_DIR, "ai-coach-chat-history.jsonl");
+const QUIZ_LOG_FILE = path.join(LOG_DIR, "quiz-attempts.jsonl");
 const ANALYTICS_LIMIT = Number.parseInt(process.env.QUESTION_ANALYTICS_LIMIT || "1000", 10);
 const MAX_RECENT = Number.parseInt(process.env.MAX_RECENT_QUESTIONS || "40", 10);
 const INSTRUCTOR_TOKEN = process.env.INSTRUCTOR_TOKEN || "";
@@ -319,6 +322,68 @@ function csvCell(value) {
   const text = Array.isArray(value) ? value.join(";") : String(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
 }
+
+async function readQuizAttempts() {
+  try {
+    const text = await fs.readFile(QUIZ_LOG_FILE, "utf8");
+    return text.split("\n").filter(Boolean).flatMap(line => {
+      try { return [JSON.parse(line)]; } catch { return []; }
+    });
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+let quizAttemptIds;
+let quizWriteQueue = Promise.resolve();
+function recordQuizAttempt(attempt) {
+  const operation = quizWriteQueue.then(async () => {
+    if (!quizAttemptIds) {
+      quizAttemptIds = new Set((await readQuizAttempts()).map(a => `${a.sessionId}:${a.questionId}`));
+    }
+    const key = `${attempt.sessionId}:${attempt.questionId}`;
+    if (quizAttemptIds.has(key)) return false;
+    await appendJsonl(QUIZ_LOG_FILE, { ts: new Date().toISOString(), ...attempt });
+    quizAttemptIds.add(key);
+    return true;
+  });
+  quizWriteQueue = operation.catch(() => {});
+  return operation;
+}
+
+// First quiz submissions are recorded separately from chat and class question analytics.
+app.post("/api/quiz/attempts", async (req, res) => {
+  let attempt;
+  try { attempt = validateAttempt(req.body); }
+  catch (err) { return res.status(400).json({ error: err.message }); }
+  try {
+    const recorded = await recordQuizAttempt(attempt);
+    res.json({ ok: true, recorded });
+  } catch (err) {
+    console.error("Quiz logging error:", err);
+    res.status(500).json({ error: "Could not save quiz submission" });
+  }
+});
+
+app.get("/api/quiz/export.csv", requireInstructor, async (req, res) => {
+  try {
+    const records = await readQuizAttempts();
+    const rows = [["timestamp", "client_timestamp", "session_id", "question_id", "practice_mode",
+      "quiz_type", "question", "selected_answer", "correct_answer", "is_correct", "unit",
+      "rho", "g", "D1", "D2", "v1", "p1_kPa", "z1", "z2"],
+      ...records.map(a => [a.ts, a.clientTimestamp, a.sessionId, a.questionId, a.mode,
+        a.type, a.question, a.selectedAnswer, a.correctAnswer, a.correct, a.unit,
+        ...["rho", "g", "D1", "D2", "v1", "p1kPa", "z1", "z2"].map(key => a.scene[key])])];
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=bernoulli-quiz-attempts.csv");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(rows.map(row => row.map(csvCell).join(",")).join("\n"));
+  } catch (err) {
+    console.error("Quiz export error:", err);
+    res.status(500).json({ error: "Could not export quiz submissions" });
+  }
+});
 
 // --- Health check
 app.get("/api/health", (req, res) => res.json({ ok: true }));
