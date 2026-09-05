@@ -1,1 +1,19 @@
-This is a ReadMe file.
+# Bernoulli (Week 5)
+
+Run `npm install`, then `npm start`. Run the calculation and API regression checks with `npm test`.
+
+## Personal quiz practice
+
+- Automatic practice starts with an equal mix of the five taught topics. It uses first submissions from the current anonymous browser profile, never pooled chat questions.
+- The most recent 10 answers per topic contribute to the focus. Older answers within that window receive progressively less weight (factor 0.85). Balanced prior observations soften the effect of a single answer, and every topic retains a positive selection weight.
+- Students can override automatic selection with balanced practice or a specific topic. The choice applies to the next question. Answers in every mode contribute to the learner's subsequent automatic practice.
+- Each question is scored once. Skipped questions do not count as incorrect. The scene is fixed during a quiz question so its values match the question and recorded result.
+- Progress is saved in browser storage for this website, without a login or cross-device synchronization. New learner clears local practice and changes the anonymous identifier; it does not delete teaching records or queued submissions.
+
+## Teaching records
+
+Set `QUESTION_LOG_DIR` to the mounted Render persistent-disk directory. Chat/question logs remain in their existing files; first quiz submissions are appended to `quiz-attempts.jsonl` in the same directory. Quiz grading is recomputed from the submitted scene on the server. A learner/question pair is recorded once, including after retries or a server restart.
+
+Quiz submissions waiting for a connection are retained in the browser and retried. The page shows pending-save status. The student recording notice covers questions, AI responses, and quiz answers.
+
+CSV routes `/api/chat/export.csv`, `/api/questions/export.csv`, and `/api/quiz/export.csv` require the server's `INSTRUCTOR_TOKEN` in the `x-instructor-token` header. The separate local instructor download tool downloads all three files. There are no instructor controls on the student page. Historical quiz answers from before this feature were not recorded and cannot be reconstructed.
