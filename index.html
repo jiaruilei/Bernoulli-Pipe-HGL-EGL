@@ -229,14 +229,14 @@
       </div>
 
 
-      <div class="sectionHeader"><div class="pill">Section 1</div><div class="small" style="color:var(--muted)">z₁ = 0 m (reference)</div></div>
+      <div class="sectionHeader"><div class="pill">Section 1</div></div>
       <div class="trio">
         <div class="tile"><div class="ttl">Pressure p₁</div><div class="val" id="s1_p">—</div></div>
         <div class="tile"><div class="ttl">Velocity v₁</div><div class="val" id="s1_v">—</div></div>
         <div class="tile"><div class="ttl">Elevation z₁</div><div class="val" id="s1_z">—</div></div>
       </div>
 
-      <div class="sectionHeader"><div class="pill">Section 2</div><div class="small" style="color:var(--muted)"><span id="z2label"></span></div></div>
+      <div class="sectionHeader"><div class="pill">Section 2</div></div>
       <div class="trio">
         <div class="tile"><div class="ttl">Pressure p₂</div><div class="val" id="s2_p">—</div></div>
         <div class="tile"><div class="ttl">Velocity v₂</div><div class="val" id="s2_v">—</div></div>
@@ -649,7 +649,6 @@ const $ = id => document.getElementById(id);
     $('s2_p').textContent= (R.p2/1000).toFixed(0)+' kPa';
     $('s2_v').textContent= R.v2.toFixed(2)+' m/s';
     $('s2_z').textContent= state.z2.toFixed(2)+' m';
-    $('z2label').textContent = `z₂ = ${state.z2.toFixed(2)} m relative to section 1`;
     draw(R);
   }
 
