@@ -570,6 +570,7 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      signal: AbortSignal.timeout(25000),
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -608,6 +609,9 @@ app.post("/api/chat", async (req, res) => {
 
     res.json({ reply, classification });
   } catch (err) {
+    if (err.name === "TimeoutError" || err.name === "AbortError") {
+      return res.status(504).json({ error: "AI reply timed out. Please try again." });
+    }
     console.error("Proxy error:", err);
     res.status(500).json({ error: "Proxy error" });
   }
