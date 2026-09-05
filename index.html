@@ -75,6 +75,8 @@
   .coachCard{position:relative; margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(135deg,#f8fbff,#eef5ff)}
   .coachHeader{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px}
   .coachHeader .title{display:flex; align-items:center; gap:10px; color:#172b4d; font-size:19px; font-weight:800}
+  .coach-icon{display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:12px; color:#fff; background:linear-gradient(135deg,#2563eb,#7c3aed); box-shadow:0 8px 18px rgba(37,99,235,.2)}
+  .coach-icon svg{display:block; width:22px; height:22px}
   .coachHeader button{padding:8px 10px; font-size:12px}
   #coachCfg{margin:10px 0 12px !important; gap:8px !important}
   #coachCfg label{font-size:13px !important; line-height:1.4}
@@ -311,7 +313,15 @@
       <!-- AI Coach -->
       <div class="coachCard" id="coachCard">
         <div class="coachHeader">
-          <div class="title">🧠 AI Coach</div>
+          <div class="title">
+            <span class="coach-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path fill="currentColor" d="M12 2.5C9.5 6.2 6.5 9.4 6.5 13.2a5.5 5.5 0 0 0 11 0C17.5 9.4 14.5 6.2 12 2.5Z"/>
+                <path d="M8.7 14.1c1 .8 1.9 1.2 3.2 1.2 1.4 0 2.4-.5 3.4-1.3" fill="none" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span>Prof. Gary's AI Proxy</span>
+          </div>
         </div>
         
         <div id="coachCfg" style="margin:6px 0 8px; display:none !important; gap:6px">
@@ -348,12 +358,12 @@
           <div id="questionSignal" class="signalRows"></div>
 
           <details class="monitorDetails" id="coachChatExportPanel">
-            <summary>Instructor export: AI Coach chat history</summary>
+            <summary>Instructor export: Prof. Gary's AI Proxy chat history</summary>
             <div class="monitorControls">
               <input id="instructorToken" type="password" placeholder="Instructor token">
               <button id="downloadCoachChat" class="secondary">Download chat CSV</button>
             </div>
-            <div id="chatExportStatus" class="instructorSummary">Enter the instructor token, then download the server-side AI Coach chat log.</div>
+            <div id="chatExportStatus" class="instructorSummary">Enter the instructor token, then download the server-side Prof. Gary's AI Proxy chat log.</div>
           </details>
         </div>
       </div>
@@ -585,7 +595,7 @@ const $ = id => document.getElementById(id);
         headers: {'x-instructor-token': token}
       });
       if(res.status === 401) throw new Error('Instructor token required or incorrect.');
-      if(!res.ok) throw new Error('Could not download AI Coach chat CSV.');
+      if(!res.ok) throw new Error('Could not download Prof. Gary\'s AI Proxy chat CSV.');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -597,7 +607,7 @@ const $ = id => document.getElementById(id);
       URL.revokeObjectURL(url);
       if(box) box.textContent = 'Downloaded.';
     }catch(err){
-      if(box) box.textContent = err.message || 'Could not download AI Coach chat CSV.';
+      if(box) box.textContent = err.message || 'Could not download Prof. Gary\'s AI Proxy chat CSV.';
     }
   }
 
@@ -1211,7 +1221,7 @@ const $ = id => document.getElementById(id);
   const coachChips = document.querySelectorAll('.coachChips .chip');
 
   function bootCoach(){
-    coachSay('Hi! I’m your AI Coach. Your questions now help choose the next quiz topics. Try “Why does pressure drop?” or “Check: v2=1.5”.');
+    coachSay('Hi! I’m Prof. Gary\'s AI Proxy. Your questions now help choose the next quiz topics. Try “Why does pressure drop?” or “Check: v2=1.5”.');
   }
   async function askCoachQuestion(q, source='typed'){
     q = String(q || '').trim();
