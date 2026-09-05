@@ -44,7 +44,7 @@ test('quiz logging is validated, durable, deduplicated and export-protected',asy
     const results=await Promise.all([post(attempt),post(attempt),post(attempt)]);
     const recorded=await Promise.all(results.map(r=>r.json()));
     assert.equal(recorded.filter(r=>r.recorded).length,1);
-    assert.equal((await (await post({...attempt,sessionId:'learner-2',selectedAnswer:2})).json()).recorded,true);
+    assert.equal((await (await post({...attempt,sessionId:'learner-2',mode:'session',selectedAnswer:2})).json()).recorded,true);
     await stop(); await start();
     assert.equal((await (await post(attempt)).json()).recorded,false);
     const response=await fetch(base+'/api/quiz/export.csv',{headers:{'x-instructor-token':'qa-instructor-token'}});
@@ -53,6 +53,7 @@ test('quiz logging is validated, durable, deduplicated and export-protected',asy
     assert.equal(csv.split('\n').length,3); assert.match(csv,/learner-1/); assert.match(csv,/learner-2/);
     const records=(await fs.readFile(path.join(directory,'quiz-attempts.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
     assert.equal(records[0].correct,true);assert.equal(records[1].correct,false);
+    assert.equal(records[0].mode,'auto');assert.equal(records[1].mode,'session');
     assert.equal((await (await fetch(base+'/api/questions/quiz-signal')).json()).totalQuestions,0);
     assert.equal((await fetch(base+'/quiz-attempts.jsonl')).status,404);
   } finally {
