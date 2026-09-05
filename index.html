@@ -350,10 +350,16 @@ const $ = id => document.getElementById(id);
 
   // --- AI Coach helpers ---
   const coachLog = () => document.getElementById('coachLog');
+  function setCoachText(el,text){
+    // Display equations supply their own line breaks; remove the surrounding
+    // blank lines that pre-wrap would otherwise add above and below them.
+    const compact=String(text).replace(/[ \t]*(?:\r?\n[ \t]*)*(\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$)[ \t]*(?:\r?\n[ \t]*)*/g,'$1');
+    el.textContent='Coach: '+compact;
+  }
   function coachSay(text){
     const div = document.createElement('div');
     div.className = 'coachMsg coach';
-    div.textContent = 'Coach: ' + text;
+    setCoachText(div,text);
     coachLog().appendChild(div);
     coachLog().scrollTop = coachLog().scrollHeight;
     typesetEl(div);
@@ -925,13 +931,13 @@ const $ = id => document.getElementById(id);
     try {
       const reply=await sendChatGPT(q,source,request);
       if(activeChat!==request) return;
-      bubble.textContent='Coach: '+reply;
+      setCoachText(bubble,reply);
       chatHistory=[...chatHistory,{role:'user',content:q+'\n\nScene at that time:\n'+request.context},
         {role:'assistant',content:reply}].slice(-6);
     } catch(error){
       if(activeChat!==request) return;
-      bubble.textContent='Coach: '+(request.controller.signal.aborted?'The AI reply took too long. ':'The AI connection is unavailable. ')+
-        'Here is help from the built-in tutor:\n\n'+builtInReply(q,request);
+      setCoachText(bubble,(request.controller.signal.aborted?'The AI reply took too long. ':'The AI connection is unavailable. ')+
+        'Here is help from the built-in tutor:\n\n'+builtInReply(q,request));
       logStudentQuestion(q,'proxy-fallback-'+source,request);
     } finally {
       clearTimeout(timeout);
