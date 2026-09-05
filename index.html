@@ -71,7 +71,7 @@
   .small{font-size:16px; line-height:1.45}
   .row .select{width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink)}
 
-  /* Coach and instructor panels retain their existing layout and controls. */
+  /* Coach and adaptive quiz focus. */
   .coachCard{position:relative; margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(135deg,#f8fbff,#eef5ff)}
   .coachHeader{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px}
   .coachHeader .title{display:flex; align-items:center; gap:10px; color:#172b4d; font-size:23px; font-weight:800}
@@ -90,8 +90,9 @@
   .coachMsg mjx-container{max-width:100%; overflow-x:auto; overflow-y:hidden}
   .coachMsg mjx-container[display="true"]{margin:.12em 0 !important; text-align:left !important}
   .coachInput{display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:9px; margin-top:10px}
-  .coachInput input,.coachInput textarea,.monitorControls input{min-width:0; width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:17px; line-height:1.45}
+  .coachInput input,.coachInput textarea{min-width:0; width:100%; padding:9px 10px; border:1px solid #cbd6e4; border-radius:9px; background:#fff; color:var(--ink); font-size:17px; line-height:1.45}
   .coachInput textarea{min-height:72px; resize:vertical}
+  .recordingNotice{margin:10px 0 0; color:#53657b; font-size:16px; line-height:1.5}
   .coachChips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
   .chip{padding:7px 10px; border:1px solid #bdd4f5; border-radius:8px; background:#fff; color:var(--blue-dark); font-size:14px; font-weight:700; cursor:pointer}
   .chip:hover{background:#eff6ff; border-color:#93b4ef}
@@ -102,12 +103,6 @@
   .signalRows{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
   .signalTag{display:inline-flex; gap:6px; align-items:center; padding:5px 8px; border:1px solid #dbe5f2; border-radius:8px; background:#eaf1f9; color:#53657b; font-size:13px}
   .signalTag strong{color:#34445a}
-  .monitorDetails{margin-top:10px; color:var(--muted); font-size:16px}
-  .monitorDetails summary{cursor:pointer; color:#233651; font-weight:700}
-  .monitorControls{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; margin-top:10px}
-  .monitorControls button{font-size:14px}
-  .instructorSummary{max-height:260px; overflow:auto; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:9px; background:#fff; font-size:16px; line-height:1.45}
-  .recentQ{border-top:1px solid var(--line); padding-top:6px; margin-top:6px}
   @media (max-width:1250px){
     .vizCard.quizActive .visualQuizRow{grid-template-columns:1fr}
     .vizCard.quizActive #quizCard{margin-top:12px !important}
@@ -117,7 +112,6 @@
     body{padding:10px}
     .grid{grid-template-columns:320px minmax(0,1fr)}
     .canvasWrap{height:410px}
-    .monitorControls{grid-template-columns:1fr}
   }
   @media (max-width:980px){
     .grid{grid-template-columns:1fr}
@@ -306,8 +300,9 @@
           <div class="chip" data-q="Check: v2= ?">Check: v₂ = ?</div>
           <div class="chip" data-q="Challenge me">Challenge me</div>
         </div>
+        <p class="recordingNotice" id="recordingNotice">Your questions and AI responses are recorded for teaching and learning support. Your instructor can review these records.</p>
         <div class="coachInput">
-          <textarea id="coachQ" rows="3" placeholder="Ask the coach..."></textarea>
+          <textarea id="coachQ" rows="3" placeholder="Ask the coach..." aria-describedby="recordingNotice"></textarea>
           <button id="coachSend">Ask</button>
         </div>
 
@@ -318,14 +313,6 @@
           </div>
           <div id="questionSignal" class="signalRows"></div>
 
-          <details class="monitorDetails" id="coachChatExportPanel">
-            <summary>Instructor export: Prof. Gary's AI Proxy chat history</summary>
-            <div class="monitorControls">
-              <input id="instructorToken" type="password" placeholder="Instructor token">
-              <button id="downloadCoachChat" class="secondary">Download chat CSV</button>
-            </div>
-            <div id="chatExportStatus" class="instructorSummary">Enter the instructor token, then download the server-side Prof. Gary's AI Proxy chat log.</div>
-          </details>
         </div>
       </div>
 
@@ -504,94 +491,6 @@ const $ = id => document.getElementById(id);
     }
     return 'v2';
   }
-  function renderQuestionSummary(data){
-    const box = $('questionSummary');
-    if(!box) return;
-    const topTopics = Object.entries(data?.topicCounts || {}).sort((a,b)=>b[1]-a[1]).slice(0,6);
-    const topQuiz = (data?.recommendedQuizTypes || []).slice(0,5);
-    const recent = data?.recent || [];
-    const topicHtml = topTopics.length ? topTopics.map(([k,v])=>`<span class="signalTag"><strong>${escapeHtml(k)}</strong>${v}</span>`).join(' ') : 'No topics yet.';
-    const quizHtml = topQuiz.length ? topQuiz.map(item=>`<span class="signalTag"><strong>${escapeHtml(item.label || item.type)}</strong>${escapeHtml(item.count ?? 0)}</span>`).join(' ') : 'No quiz signal yet.';
-    const recentHtml = recent.length ? recent.map(item => `
-      <div class="recentQ">
-        <div><strong>${escapeHtml(new Date(item.ts).toLocaleString())}</strong> <span style="color:#5d6b7d">${escapeHtml(item.source || '')}</span></div>
-        <div>${escapeHtml(item.question || '')}</div>
-        <div style="color:#5d6b7d">${escapeHtml((item.topics || []).join(', '))}</div>
-      </div>`).join('') : '<div class="recentQ">No recent questions.</div>';
-    box.innerHTML = `
-      <div><strong>Total logged questions:</strong> ${escapeHtml(data?.totalQuestions ?? 0)}</div>
-      <div style="margin-top:6px"><strong>Topic counts:</strong><br>${topicHtml}</div>
-      <div style="margin-top:6px"><strong>Quiz priorities:</strong><br>${quizHtml}</div>
-      <div style="margin-top:6px"><strong>Recent questions:</strong>${recentHtml}</div>`;
-  }
-  async function loadQuestionSummary(){
-    const box = $('questionSummary');
-    if(box) box.textContent = 'Loading…';
-    try{
-      const token = $('instructorToken')?.value?.trim();
-      const headers = token ? {'x-instructor-token': token} : {};
-      const res = await fetch(apiUrl('/api/questions/summary'), { headers });
-      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
-      if(!res.ok) throw new Error('Could not load question summary.');
-      const data = await res.json();
-      renderQuestionSummary(data);
-      renderQuizSignal(data);
-    }catch(err){
-      if(box) box.textContent = err.message || 'Could not load question summary.';
-    }
-  }
-
-  async function downloadCoachChatCsv(){
-    const token = $('instructorToken')?.value?.trim();
-    const box = $('chatExportStatus');
-    if(!token){
-      if(box) box.textContent = 'Enter instructor token first.';
-      return;
-    }
-    try{
-      if(box) box.textContent = 'Downloading…';
-      const res = await fetch(apiUrl('/api/chat/export.csv'), {
-        headers: {'x-instructor-token': token}
-      });
-      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
-      if(!res.ok) throw new Error('Could not download Prof. Gary\'s AI Proxy chat CSV.');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'bernoulli-ai-coach-chat-history.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      if(box) box.textContent = 'Downloaded.';
-    }catch(err){
-      if(box) box.textContent = err.message || 'Could not download Prof. Gary\'s AI Proxy chat CSV.';
-    }
-  }
-
-  async function downloadQuestionCsv(){
-    const token = $('instructorToken')?.value?.trim();
-    const headers = token ? {'x-instructor-token': token} : {};
-    const box = $('questionSummary');
-    try{
-      const res = await fetch(apiUrl('/api/questions/export.csv'), { headers });
-      if(res.status === 401) throw new Error('Instructor token required or incorrect.');
-      if(!res.ok) throw new Error('Could not download CSV.');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'bernoulli-student-questions.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }catch(err){
-      if(box) box.textContent = err.message || 'Could not download CSV.';
-    }
-  }
-
   function explainScene(){
     const R = compute();
     const {rho,g,D1,D2,v1,p1kPa,z1,z2} = state;
@@ -1100,9 +999,6 @@ coachQ.addEventListener('keydown', (e)=>{
     askCoachQuestion(q, 'chip');
   }));
   document.getElementById('refreshQuizSignal')?.addEventListener('click', ()=> refreshQuizSignal(true));
-  document.getElementById('loadQuestionSummary')?.addEventListener('click', loadQuestionSummary);
-  document.getElementById('downloadQuestions')?.addEventListener('click', downloadQuestionCsv);
-  document.getElementById('downloadCoachChat')?.addEventListener('click', downloadCoachChatCsv);
 
   // Start coach
   bootCoach();
