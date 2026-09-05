@@ -235,8 +235,6 @@
         <span class="key"><span class="swatch sP"></span>Pressure p</span>
         <span class="key"><span class="swatch sV"></span>Velocity v</span>
         <span class="key"><span class="swatch sZ"></span>Elevation z</span>
-        <span class="key"><span class="swatch" style="background:#dc2626"></span>EGL</span>
-<span class="key"><span class="swatch" style="background:#0e7490"></span>HGL</span>
 <span class="key" style="margin-left:auto;color:#5d6b7d">Flow streak color = local speed</span>
       </div>
 
@@ -416,7 +414,7 @@ const $ = id => document.getElementById(id);
     const q = String(question || '').toLowerCase();
     const types = new Set();
     if(/continuity|diameter|area|\bd1\b|\bd2\b|d₁|d₂|flow rate|\bq\b|narrow|widen|velocity|increase v[₂2]/.test(q)){ types.add('v2'); types.add('Q'); }
-    if(/pressure|\bp1\b|\bp2\b|p₁|p₂|drop|gauge|kpa|elevation|height|\bz1\b|\bz2\b|z₁|z₂|bernoulli|hgl|egl|head|energy/.test(q)){ types.add('p2kPa'); types.add('dhMano'); }
+    if(/pressure|\bp1\b|\bp2\b|p₁|p₂|drop|gauge|kpa|elevation|height|\bz1\b|\bz2\b|z₁|z₂|bernoulli|head|energy/.test(q)){ types.add('p2kPa'); types.add('dhMano'); }
     if(/manometer|delta h|\bdh\b|Δh|tap/.test(q)){ types.add('dhMano'); }
     if(/pitot|stagnation|velocity head/.test(q)){ types.add('dhPitot'); }
     if(!types.size) ['v2','p2kPa','dhMano','dhPitot','Q'].forEach(t=>types.add(t));
@@ -606,8 +604,8 @@ const $ = id => document.getElementById(id);
     const vtrend = (R.v2>v1)? 'increases' : (R.v2<v1?'decreases':'stays similar');
     const reason = [];
     if (D2 < D1) reason.push('narrower D₂ → higher v₂ (continuity)');
-    if (z2 > z1) reason.push('higher z₂ → some head goes to elevation');
-    reason.push('to conserve total head (no losses), pressure trades with kinetic/elevation');
+    if (z2 > z1) reason.push('higher z₂ → lower p₂ for the same speeds');
+    reason.push('Bernoulli links pressure, velocity, and elevation when there are no losses');
     lines.push(`Interpretation: D₂ vs D₁ → v₂ ${vtrend}; Δp = p₁−p₂ = ${fmt(dp)} kPa. Because ${reason.join(', ')}.`);
     coachSay(lines.join('<br>'));
   }
@@ -617,9 +615,9 @@ const $ = id => document.getElementById(id);
     const tips = [];
     if (D2 < D1) tips.push('Narrowing (D₂) accelerates flow, increasing v₂.');
     else tips.push('Widening (D₂≥D₁) decelerates flow, reducing v₂.');
-    if (z2 > 0) tips.push('A positive z₂ consumes head for elevation, lowering p₂.');
+    if (z2 > 0) tips.push('A higher outlet elevation z₂ lowers p₂ for the same speeds.');
     if (v1 < 0.8) tips.push('Increasing v₁ increases both Q and v₂ (via continuity).');
-    tips.push('At fixed ρ and g, Bernoulli trades pressure head with velocity and elevation.');
+    tips.push('At fixed ρ and g, Bernoulli links pressure, velocity, and elevation.');
     coachSay(tips.join(' '));
   }
 
@@ -780,10 +778,7 @@ const $ = id => document.getElementById(id);
     const dhMano=(p1-p2)/(rho*g);         // m (water)
     const dhPitot=(v2*v2)/(2*g);          // m
     const Q=A1*v1;                        // m^3/s
-    const head1=p1/(rho*g)+v1*v1/(2*g)+z1;
-    const head2=p2/(rho*g)+v2*v2/(2*g)+z2;
-    const dHead=Math.abs(head1-head2);
-    return {A1,A2,v2,p2,dhMano,dhPitot,Q,head1,head2,dHead};
+    return {A1,A2,v2,p2,dhMano,dhPitot,Q};
   }
 
   function computeAndRender(){
@@ -813,56 +808,6 @@ const $ = id => document.getElementById(id);
   }
 
   const ctx=$('viz').getContext('2d');
-
-  // --- EGL & HGL overlay ---
-  function drawHeadLines(R){
-    const {z1,z2,v1} = state;
-    const W=ctx.canvas.width, H=ctx.canvas.height;
-    const x1=120, x2=W-120;
-    const yBase = H*0.62;  // same vertical reference used elsewhere
-    const k = 12;          // pixels per meter
-
-    // Pressure heads (p/ρg)
-    const h1_p = state.p1kPa*1000/(state.rho*state.g);
-    const h2_p = R.p2/(state.rho*state.g);
-
-    // Velocity heads (v²/2g)
-    const h1_v = v1*v1/(2*state.g);
-    const h2_v = R.v2*R.v2/(2*state.g);
-
-    const EGL1 = h1_p + h1_v + z1;
-    const EGL2 = h2_p + h2_v + z2;
-    const HGL1 = h1_p + z1;
-    const HGL2 = h2_p + z2;
-
-    const yHead = h => yBase - h*k;
-
-    ctx.save();
-    // HGL dashed (cyan)
-    ctx.setLineDash([6,4]);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#0e7490';
-    ctx.beginPath();
-    ctx.moveTo(x1, yHead(HGL1));
-    ctx.lineTo(x2, yHead(HGL2));
-    ctx.stroke();
-
-    // EGL solid (soft red)
-    ctx.setLineDash([]);
-    ctx.strokeStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.moveTo(x1, yHead(EGL1));
-    ctx.lineTo(x2, yHead(EGL2));
-    ctx.stroke();
-    ctx.restore();
-
-    // Labels near right
-    ctx.fillStyle = '#0e7490';
-    ctx.font='18px system-ui';
-    ctx.fillText('HGL', x2 - 36, yHead((HGL1+HGL2)/2) + 22);
-    ctx.fillStyle = '#dc2626';
-    ctx.fillText('EGL', x2 - 36, yHead((EGL1+EGL2)/2) - 10);
-  }
 
 
   function draw(R){
@@ -1040,8 +985,6 @@ const $ = id => document.getElementById(id);
     ctx.textAlign='right';
     ctx.textAlign='left';
 
-    // Overlay EGL & HGL
-    drawHeadLines(R);
   }
   // === ChatGPT proxy helpers ===
   (function setupChatToggle(){
@@ -1067,8 +1010,7 @@ const $ = id => document.getElementById(id);
       `D1=${D1} m, D2=${D2} m`,
       `v1=${v1} m/s, v2=${R.v2.toFixed(3)} m/s`,
       `p1=${p1kPa} kPa (gauge), p2=${(R.p2/1000).toFixed(1)} kPa (gauge)`,
-      `z1=${z1} m, z2=${z2} m`,
-      `Heads: H1=${R.head1.toFixed(3)} m, H2=${R.head2.toFixed(3)} m; HGL/EGL shown`
+      `z1=${z1} m, z2=${z2} m`
     ].join('\\n');
   }
 
@@ -1081,7 +1023,10 @@ const $ = id => document.getElementById(id);
     const messages = [
       { role:'system', content:
         'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. ' +
-        'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words.'
+        'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words. ' +
+        'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, and Pitot tubes. ' +
+        'Do not introduce or explain energy grade lines (EGL) or hydraulic grade lines (HGL). ' +
+        'If asked about them, briefly say they will be covered in a later lesson and return to the current topics.'
       },
       { role:'user', content: `${userQuestion}\n\nCurrent scene:\n${scene}` }
     ];
