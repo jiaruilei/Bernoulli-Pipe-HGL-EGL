@@ -7,6 +7,51 @@ export const QUIZ_TYPES = Object.freeze(Object.keys(QUIZ_LABELS));
 // Keep previous mode names valid for older submissions waiting to upload.
 export const PRACTICE_MODES = Object.freeze(['session', 'auto', 'balanced', ...QUIZ_TYPES]);
 
+export const PARAMETER_LIMITS = Object.freeze({
+  rho:[500,2000], g:[1,20], D1:[.03,.5], D2:[.02,.5],
+  v1:[.1,6], p1kPa:[0,500], z2:[-10,10],
+});
+
+export function validParameter(key, raw) {
+  const limits=PARAMETER_LIMITS[key], value=Number(raw);
+  return Boolean(limits && String(raw).trim()!=='' && Number.isFinite(value) &&
+    value>=limits[0] && value<=limits[1]);
+}
+
+// Introductory quiz examples: moderate speeds and positive gauge pressures.
+// Explore mode retains the wider input range.
+export function generateQuizScene({rho=1000,g=9.81}={}, random=Math.random) {
+  if(!validParameter('rho',rho)||!validParameter('g',g)) throw new Error('Invalid fluid parameters');
+  const rnd=(a,b,step)=>Number((Math.round((a+random()*(b-a))/step)*step).toFixed(3));
+  for(let tries=0;tries<100;tries++) {
+    const scene={rho,g,D1:rnd(.06,.20,.005),D2:rnd(.03,.16,.005),
+      v1:rnd(.4,4,.1),p1kPa:rnd(90,240,1),z1:0,z2:rnd(-3,3,.1)};
+    const r=calculateScene(scene);
+    if(r.v2>=.2 && r.v2<=8 && r.p2>=20000 && r.p2<=300000) return scene;
+  }
+  return {rho,g,D1:.1,D2:.08,v1:1,p1kPa:180,z1:0,z2:0};
+}
+
+export function pressureGaugeFraction(value) {
+  return Math.max(0,Math.min(1,value/500));
+}
+
+export function workedSolution(type, scene) {
+  const r=calculateScene(scene), answer=quizAnswer(type,scene);
+  const f=(value,n=3)=>Number(value.toFixed(n)).toString();
+  const velocity=`Continuity: v₂ = v₁(D₁/D₂)² = ${scene.v1} × (${scene.D1}/${scene.D2})² = ${f(r.v2)} m/s.`;
+  const pressure=`Bernoulli: p₂ = p₁ + ½ρ(v₁² − v₂²) + ρg(z₁ − z₂).\nUsing Pa: p₂ = ${scene.p1kPa*1000} + ½ × ${scene.rho} × (${scene.v1}² − (${scene.v1} × (${scene.D1}/${scene.D2})²)²) + ${scene.rho} × ${scene.g} × (${scene.z1} − (${scene.z2})) = ${f(r.p2)} Pa.`;
+  const steps={
+    v2:[velocity],
+    p2kPa:[velocity,pressure,'Divide Pa by 1000 to obtain kPa (gauge).'],
+    dhMano:[velocity,pressure,`For the pressure-head difference used in this quiz: Δh = (p₁ − p₂)/(ρg) = (${scene.p1kPa*1000} − ${f(r.p2)})/(${scene.rho} × ${scene.g}) = ${f(r.dhMano)} m.`],
+    dhPitot:[velocity,`Pitot velocity head: Δhₚ = v₂²/(2g) = (${scene.v1} × (${scene.D1}/${scene.D2})²)²/(2 × ${scene.g}) = ${f(r.dhPitot)} m.`],
+    Q:[`Area: A₁ = πD₁²/4 = π × ${scene.D1}²/4 = ${f(r.A1,6)} m².`,
+      `Flow rate: Q = A₁v₁ = (π × ${scene.D1}²/4) × ${scene.v1} = ${f(r.Q,6)} m³/s. Multiply by 1000 for L/s.`],
+  };
+  return [...steps[type],`Answer: ${answer.format(answer.value)}`];
+}
+
 export function calculateScene({rho,g,D1,D2,v1,p1kPa,z1,z2}) {
   const A1=Math.PI*D1*D1/4, A2=Math.PI*D2*D2/4;
   const v2=v1*(A1/A2), p1=p1kPa*1000;
@@ -72,6 +117,7 @@ export function chooseSessionTopic(counts, random=Math.random) {
 }
 
 export function answerChoices(correct, format, random=Math.random) {
+  if(!Number.isFinite(correct)) throw new Error('Quiz answer must be finite');
   const options=[correct], labels=new Set([format(correct)]);
   const add=value=>{
     if(!Number.isFinite(value) || isCorrectAnswer(value,correct) || labels.has(format(value))) return;

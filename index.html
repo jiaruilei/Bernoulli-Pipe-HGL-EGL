@@ -83,7 +83,7 @@
   #chatgptConfig{gap:10px !important}
   #chatgptConfig input{min-width:0; font-size:16px !important; padding:9px 10px !important}
   .coachLog{height:380px; overflow:auto; padding:12px; border:1px solid #d7e2ef; border-radius:11px; background:#fff; font-size:17px; line-height:1.45}
-  .coachMsg{width:fit-content; max-width:88%; margin-bottom:9px; padding:9px 11px; border-radius:11px; overflow-wrap:anywhere}
+  .coachMsg{width:fit-content; max-width:88%; margin-bottom:9px; padding:9px 11px; border-radius:11px; overflow-wrap:anywhere; white-space:pre-wrap}
   .coachMsg.coach{color:#1e3a8a; border:1px solid #dbeafe; background:#eff6ff}
   .coachMsg.user{margin-left:auto; color:#fff; background:var(--accent)}
   .coachLog .mjx-container{font-size:1em; line-height:1.25}
@@ -97,11 +97,19 @@
   .chip{padding:7px 10px; border:1px solid #bdd4f5; border-radius:8px; background:#fff; color:var(--blue-dark); font-size:14px; font-weight:700; cursor:pointer}
   .chip:hover{background:#eff6ff; border-color:#93b4ef}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-  button[hidden]{display:none}
+  [hidden]{display:none !important}
+  .inputError{margin:4px 0 8px; color:var(--bad); font-size:14px}
+  input[aria-invalid=true]{border-color:var(--bad) !important}
+  #workedSolution{padding:10px; border:1px solid var(--line); border-radius:9px; background:#f8fafc; font-size:16px; overflow-wrap:anywhere}
+  #workedSolution summary{cursor:pointer; color:var(--blue-dark); font-weight:700}
+  #solutionSteps{padding-left:22px; margin-bottom:0; white-space:pre-wrap}
+  #solutionSteps li+li{margin-top:10px}
+  #qtext{scroll-margin-top:16px}
+  #quizGivens{display:none; color:var(--muted); white-space:pre-line}
   input:disabled{opacity:.7}
   @media (max-width:1250px){
     .vizCard.quizActive .visualQuizRow{grid-template-columns:1fr}
-    .vizCard.quizActive #quizCard{margin-top:12px !important}
+    .vizCard.quizActive #quizCard{margin-top:0 !important; grid-row:1}
     .vizCard.quizActive .canvasWrap{height:430px}
   }
   @media (max-width:1050px){
@@ -112,6 +120,9 @@
   @media (max-width:980px){
     .grid{grid-template-columns:1fr}
     #controls{border-right:0; border-bottom:1px solid var(--line)}
+    #controls.quizActive #parameterFields{display:none}
+    #quizGivens{display:block}
+    .vizCard.quizActive .canvasWrap{height:350px}
   }
   @media (max-width:790px){
     body{padding:0; background:#fff}
@@ -130,7 +141,7 @@
     .kpi .t,.tile .ttl{font-size:13px}
     .choices{grid-template-columns:1fr}
     .sectionHeader{align-items:flex-start}
-    .canvasWrap,.vizCard.quizActive .canvasWrap{height:auto; aspect-ratio:2 / 1}
+    .canvasWrap,.vizCard.quizActive .canvasWrap{height:340px}
   }
 </style>
 
@@ -165,7 +176,9 @@
   <div class="grid">
     <!-- Controls -->
     <div class="card" id="controls">
-      <div class="pill">Explore Mode</div>
+      <div class="pill" id="modeLabel">Explore Mode</div>
+
+      <div id="parameterFields">
 
       <div class="row">
         <label>Fluid density ρ (kg/m³)</label>
@@ -182,31 +195,32 @@
         <label>Upstream diameter D₁ (m)</label>
         <input id="D1n" type="number" step="0.005" min="0.03" max="0.5" value="0.10">
       </div>
-      <input id="D1" type="range" min="0.05" max="0.30" step="0.005" value="0.10">
+      <input id="D1" type="range" min="0.03" max="0.5" step="0.005" value="0.10">
 
       <div class="row">
         <label>Downstream diameter D₂ (m)</label>
         <input id="D2n" type="number" step="0.005" min="0.02" max="0.5" value="0.05">
       </div>
-      <input id="D2" type="range" min="0.03" max="0.20" step="0.005" value="0.05">
+      <input id="D2" type="range" min="0.02" max="0.5" step="0.005" value="0.05">
 
       <div class="row">
         <label>Upstream speed v₁ (m/s)</label>
         <input id="v1n" type="number" step="0.1" min="0.1" max="6" value="1.0">
       </div>
-      <input id="v1" type="range" min="0.2" max="5" step="0.1" value="1.0">
+      <input id="v1" type="range" min="0.1" max="6" step="0.1" value="1.0">
 
       <div class="row">
         <label>Upstream gauge pressure p₁ (kPa)</label>
         <input id="p1n" type="number" step="1" min="0" max="500" value="180">
       </div>
-      <input id="p1" type="range" min="0" max="300" step="1" value="180">
+      <input id="p1" type="range" min="0" max="500" step="1" value="180">
 
       <div class="row">
         <label>Elevation z₂ relative to z₁ (m)</label>
         <input id="z2n" type="number" step="0.1" min="-10" max="10" value="2">
       </div>
-      <input id="z2" type="range" min="-5" max="5" step="0.1" value="2">
+      <input id="z2" type="range" min="-10" max="10" step="0.1" value="2">
+      </div>
 
       <div style="display:flex; gap:8px; margin-top:10px">
         <button id="reset" class="secondary">Reset</button>
@@ -219,10 +233,10 @@
     <div class="card vizCard" id="visualCard">
       <div class="visualQuizRow">
         <div class="visualPanel">
-          <div class="canvasWrap"><canvas id="viz" width="860" height="430"></canvas></div>
+          <div class="canvasWrap"><canvas id="viz" width="860" height="430" role="img" aria-label="Pipe flow diagram. Pressure rings run clockwise from 0 to 500 kPa. Numerical values appear below."></canvas></div>
 
       <div class="legend">
-        <span class="key"><span class="swatch sP"></span>Pressure p</span>
+        <span class="key"><span class="swatch sP"></span>Pressure p (rings: 0–500 kPa)</span>
         <span class="key"><span class="swatch sV"></span>Velocity v</span>
         <span class="key"><span class="swatch sZ"></span>Elevation z</span>
 <span class="key" style="margin-left:auto;color:#5d6b7d">Flow streak color = local speed</span>
@@ -249,7 +263,8 @@
         <div class="card" id="quizCard" style="margin-top:0; display:none">
           <div class="pill">Quiz Mode</div>
           <div class="quiz">
-            <div id="qtext" style="font-weight:600"></div>
+            <div id="qtext" tabindex="-1" style="font-weight:600"></div>
+            <div id="quizGivens" class="small" aria-label="Given values"></div>
             <div class="choices" id="choices"></div>
             <div class="quizActions">
               <button id="submit">Submit</button>
@@ -257,6 +272,10 @@
               <div class="pill" id="score">Score: 0/0</div>
             </div>
             <div id="feedback" class="msg" role="status"></div>
+            <details id="workedSolution" hidden>
+              <summary>Show worked solution</summary>
+              <ol id="solutionSteps"></ol>
+            </details>
             <div class="small" id="quizSaveStatus" role="status" hidden></div>
             <button id="retryQuizSave" class="secondary" hidden>Retry saving</button>
           </div>
@@ -291,17 +310,17 @@
                    style="background:#ffffff;border:1px solid #dce4ee;color:#142033;border-radius:8px;padding:6px 8px">
           </div>
         </div>
-        <div class="coachLog" id="coachLog"></div>
+        <div class="coachLog" id="coachLog" role="log" aria-label="Conversation with Prof. Gary's AI Proxy" aria-live="polite"></div>
 
         <div class="coachChips">
-          <div class="chip" data-q="How do I increase v2?">How do I increase v₂?</div>
-          <div class="chip" data-q="Walk me through Bernoulli">Walk me through Bernoulli</div>
-          <div class="chip" data-q="Check: v2= ?">Check: v₂ = ?</div>
-          <div class="chip" data-q="Challenge me">Challenge me</div>
+          <button class="chip" data-q="How do I increase v2?">How do I increase v₂?</button>
+          <button class="chip" data-q="Walk me through Bernoulli">Walk me through Bernoulli</button>
+          <button class="chip" data-q="Check: v2= ?">Check: v₂ = ?</button>
+          <button class="chip" data-q="Challenge me">Challenge me</button>
         </div>
         <p class="recordingNotice" id="recordingNotice">For this webpage only, your questions, AI responses, and quiz answers are recorded for teaching and learning support. Your instructor can review these records.</p>
         <div class="coachInput">
-          <textarea id="coachQ" rows="3" placeholder="Ask the coach..." aria-describedby="recordingNotice"></textarea>
+          <textarea id="coachQ" rows="3" placeholder="Ask the coach..." aria-label="Your question" aria-describedby="recordingNotice"></textarea>
           <button id="coachSend">Ask</button>
         </div>
 
@@ -334,10 +353,11 @@ const $ = id => document.getElementById(id);
   function coachSay(text){
     const div = document.createElement('div');
     div.className = 'coachMsg coach';
-    div.innerHTML = 'Coach: ' + text;
+    div.textContent = 'Coach: ' + text;
     coachLog().appendChild(div);
     coachLog().scrollTop = coachLog().scrollHeight;
     typesetEl(div);
+    return div;
   }
   function userSay(text){
     const div = document.createElement('div');
@@ -449,10 +469,10 @@ const $ = id => document.getElementById(id);
     } catch { uploadFailed=true; }
     finally { uploading=false; renderSaveStatus(); }
   }
-  async function logStudentQuestion(question,source='built-in-coach'){
+  async function logStudentQuestion(question,source,request){
     try {
       await fetch(apiUrl('/api/questions/log'),{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({question,source,sessionId:getSessionId(),requestId:newRequestId(),scene:sceneContext()})});
+        body:JSON.stringify({question,source,sessionId:request.sessionId,requestId:request.requestId,scene:request.context})});
     } catch { /* Session adaptation is already applied locally. */ }
   }
   function chooseQuizType(){ return QuizPractice.chooseSessionTopic(practice.topicCounts); }
@@ -464,6 +484,7 @@ const $ = id => document.getElementById(id);
   function setupPractice(){
     savePracticeSession(); renderSaveStatus(); flushQuizAttempts();
     $('startFresh').addEventListener('click',()=>{
+      cancelChat();
       practice=freshPracticeSession(); savePracticeSession();
       resetScene(); $('coachLog').innerHTML=''; $('coachQ').value='';
       bootCoach(); coachSay('New practice session started.');
@@ -477,85 +498,23 @@ const $ = id => document.getElementById(id);
     setInterval(()=>{ if(pendingAttempts().length) flushQuizAttempts(); },30000);
   }
 
-  function explainScene(){
-    const R = compute();
-    const {rho,g,D1,D2,v1,p1kPa,z1,z2} = state;
-    const p2kPa = R.p2/1000;
-    const lines = [];
-    lines.push(`Continuity: A₁=πD₁²/4=${fmt(Math.PI*D1*D1/4,4)} m², A₂=${fmt(Math.PI*D2*D2/4,4)} m² → v₂=v₁·A₁/A₂=${fmt(v1)}·${fmt((Math.PI*D1*D1/4)/(Math.PI*D2*D2/4),2)}=${fmt(R.v2)} m/s.`);
-    lines.push(`Bernoulli (gauge): p₁/ρg + v₁²/2g + z₁ = p₂/ρg + v₂²/2g + z₂.`);
-    lines.push(`Numbers: p₁=${fmt(p1kPa)} kPa, p₂=${fmt(p2kPa)} kPa, v₁=${fmt(v1)} m/s, v₂=${fmt(R.v2)} m/s, z₂=${fmt(z2)} m.`);
-    const dp = p1kPa - p2kPa;
-    const vtrend = (R.v2>v1)? 'increases' : (R.v2<v1?'decreases':'stays similar');
-    const reason = [];
-    if (D2 < D1) reason.push('narrower D₂ → higher v₂ (continuity)');
-    if (z2 > z1) reason.push('higher z₂ → lower p₂ for the same speeds');
-    reason.push('Bernoulli links pressure, velocity, and elevation when there are no losses');
-    lines.push(`Interpretation: D₂ vs D₁ → v₂ ${vtrend}; Δp = p₁−p₂ = ${fmt(dp)} kPa. Because ${reason.join(', ')}.`);
-    coachSay(lines.join('<br>'));
-  }
-
-  function hint(){
-    const {D1,D2,z2,v1} = state;
-    const tips = [];
-    if (D2 < D1) tips.push('Narrowing (D₂) accelerates flow, increasing v₂.');
-    else tips.push('Widening (D₂≥D₁) decelerates flow, reducing v₂.');
-    if (z2 > 0) tips.push('A higher outlet elevation z₂ lowers p₂ for the same speeds.');
-    if (v1 < 0.8) tips.push('Increasing v₁ increases both Q and v₂ (via continuity).');
-    tips.push('At fixed ρ and g, Bernoulli links pressure, velocity, and elevation.');
-    coachSay(tips.join(' '));
-  }
-
-  function coachCheck(expr){
-    // Recognize "v2= X", "p2= X kPa"
-    const R = compute();
-    const txt = expr.replace(/\s+/g,'').toLowerCase();
-    let m = txt.match(/v2=([0-9]*\.?[0-9]+)/);
-    if (m){
-      const user = parseFloat(m[1]), truth = R.v2;
-      const ok = Math.abs((user-truth)/truth) < 0.03;
-      coachSay(ok ? `✅ Correct: v₂ = ${fmt(truth)} m/s (within 3%).` :
-                     `❌ Not quite. v₂ should be ${fmt(truth)} m/s.`);
-      return;
+  function builtInReply(question, request){
+    if(request.quizPending) return 'Start with continuity: A₁v₁ = A₂v₂ and A = πD²/4. Then use the equation for the quantity asked: Bernoulli for pressure, Q = Av for flow rate, Δhₚ = v²/(2g) for Pitot head, or Δh = (p₁ − p₂)/(ρg) for this quiz’s pressure-head difference. Submit your answer to see the worked solution.';
+    const scene=request.scene, r=QuizPractice.calculateScene(scene), q=question.toLowerCase();
+    if(q.includes('increase v2')||q.includes('increase v₂')) return 'To increase v₂, decrease D₂ or increase v₁. Continuity gives v₂ = v₁(D₁/D₂)². Higher speed tends to lower pressure when elevation stays fixed.';
+    if(q.startsWith('check')){
+      const match=q.replace(/\s+/g,'').match(/(v2|p2)=(-?\d*\.?\d+)/);
+      if(!match) return 'Try “Check: v2=1.5” or “Check: p2=140”.';
+      const truth=match[1]==='v2'?r.v2:r.p2/1000, unit=match[1]==='v2'?'m/s':'kPa';
+      const ok=Math.abs(Number(match[2])-truth)<=Math.max(1e-6,Math.abs(truth)*.03);
+      return (ok?'Correct. ':'Not quite. ')+match[1]+' = '+fmt(truth)+' '+unit+'.';
     }
-    m = txt.match(/p2=?([0-9]*\.?[0-9]+)/);
-    if (m){
-      const user = parseFloat(m[1]), truth = R.p2/1000;
-      const ok = Math.abs((user-truth)/Math.max(1,truth)) < 0.03;
-      coachSay(ok ? `✅ Correct: p₂ ≈ ${fmt(truth,1)} kPa.` :
-                     `❌ Not quite. p₂ ≈ ${fmt(truth,1)} kPa.`);
-      return;
-    }
-    coachSay("Try 'Check: v2=1.5' or 'Check: p2=140'.");
-  }
-
-  function coachHandle(q){
-    const R = compute();
-    const {D1,D2,v1,p1kPa,z2} = state;
-    const ql = q.trim().toLowerCase();
-
-    if (!q.trim()){ coachSay('Ask me about pressure, velocity, elevation, continuity, or Bernoulli.'); return; }
-    if (ql.includes('explain')){ explainScene(); return; }
-    if (ql.includes('hint')){ hint(); return; }
-    if (ql.startsWith('check:') || ql.startsWith('check')){ coachCheck(q.replace(/check:?/i,'')); return; }
-    if (ql.includes('increase v2') || ql.includes('increase v₂') || ql.includes('make v2')){
-      coachSay('To increase v₂: decrease D₂ (narrow outlet), increase v₁, or both. Trade-offs: higher v₂ typically lowers p₂ (Bernoulli).');
-      return;
-    }
-    if (ql.includes('bernoulli')){
-      coachSay('Bernoulli: p/ρg + v²/2g + z = constant (no losses). If v increases or z rises, p must drop to keep the sum constant.');
-      return;
-    }
-    if (ql.includes('challenge')){
-      const choices = [
-        `Given D₁=${fmt(D1,3)} m, D₂=${fmt(D2,3)} m, v₁=${fmt(v1)} m/s, find v₂.`,
-        `With p₁=${fmt(p1kPa)} kPa, v₁=${fmt(v1)} m/s, D₁=${fmt(D1,3)} m, D₂=${fmt(D2,3)} m, z₂=${fmt(z2)} m, compute p₂ (kPa).`,
-      ];
-      coachSay('Try this: ' + choices[Math.floor(Math.random()*choices.length)] + ' Use continuity and Bernoulli.');
-      return;
-    }
-    // Default
-    explainScene();
+    if(q.includes('hint')) return 'Use continuity to connect the two speeds. In Bernoulli, a higher speed or elevation leaves less pressure for the same total energy per unit weight.';
+    if(q.includes('challenge')) return QuizPractice.quizAnswer('p2kPa',scene).question+' Use continuity first, then Bernoulli.';
+    if(q.includes('pitot')) return QuizPractice.workedSolution('dhPitot',scene).join('\n');
+    if(q.includes('manometer')) return QuizPractice.workedSolution('dhMano',scene).join('\n');
+    if(q.includes('flow rate')) return QuizPractice.workedSolution('Q',scene).join('\n');
+    return QuizPractice.workedSolution('p2kPa',scene).join('\n');
   }
 
   const state = {
@@ -565,16 +524,33 @@ const $ = id => document.getElementById(id);
     t:0
   };
 
-  // Bind
-  const link=(slider, numeric, key)=>{
-    const s=$(slider), n=$(numeric);
-    const set=(val,src)=>{ state[key]=+val; (src==='s'? n:s).value=val; computeAndRender(); };
-    s.addEventListener('input', e=> set(e.target.value,'s'));
-    n.addEventListener('input', e=> set(e.target.value,'n'));
-  };
-  link('D1','D1n','D1'); link('D2','D2n','D2'); link('v1','v1n','v1'); link('p1','p1n','p1kPa'); link('z2','z2n','z2');
-  $('rho').addEventListener('input', e=>{ state.rho=+e.target.value; computeAndRender(); });
-  $('g').addEventListener('input', e=>{ state.g=+e.target.value; computeAndRender(); });
+  // Keep the last valid scene while an input is incomplete or outside its range.
+  const inputBindings=[];
+  function bindParameter(numeric,key,slider){
+    const n=$(numeric), s=slider?$(slider):null, [min,max]=QuizPractice.PARAMETER_LIMITS[key];
+    const label=n.closest('.row').querySelector('label'); label.htmlFor=n.id;
+    n.min=min; n.max=max;
+    const error=document.createElement('p'); error.id=n.id+'Error'; error.className='inputError'; error.hidden=true;
+    error.setAttribute('role','status'); n.closest('.row').after(error); n.setAttribute('aria-describedby',error.id);
+    if(s){ s.min=min; s.max=max; s.setAttribute('aria-label',label.textContent); }
+    function validate(){
+      const valid=QuizPractice.validParameter(key,n.value);
+      n.setAttribute('aria-invalid',String(!valid)); error.hidden=valid;
+      error.textContent=valid?'':'Enter a value from '+min+' to '+max+'.';
+      return valid;
+    }
+    n.addEventListener('input',()=>{
+      if(!validate()) return;
+      state[key]=Number(n.value); if(s) s.value=n.value; computeAndRender();
+    });
+    if(s) s.addEventListener('input',()=>{
+      n.value=s.value; validate(); state[key]=Number(s.value); computeAndRender();
+    });
+    inputBindings.push({n,s,key,validate,error});
+  }
+  bindParameter('rho','rho'); bindParameter('g','g');
+  bindParameter('D1n','D1','D1'); bindParameter('D2n','D2','D2');
+  bindParameter('v1n','v1','v1'); bindParameter('p1n','p1kPa','p1'); bindParameter('z2n','z2','z2');
 
   function resetScene(){
     stopQuiz();
@@ -583,31 +559,33 @@ const $ = id => document.getElementById(id);
   }
   $('reset').addEventListener('click',resetScene);
   function syncSceneControls(){
-    $('rho').value=state.rho; $('g').value=state.g;
-    for(const id of ['D1','D2','v1','p1','z2']){
-      const value=id==='p1'?state.p1kPa:state[id]; $(id).value=value; $(id+'n').value=value;
+    for(const {n,s,key,validate} of inputBindings){
+      n.value=state[key]; if(s) s.value=state[key]; validate();
     }
   }
   function setQuizControls(active){
     document.querySelectorAll('#controls input').forEach(input=>input.disabled=active);
+    $('controls').classList.toggle('quizActive',active);
+    $('modeLabel').textContent=active?'Quiz Mode':'Explore Mode';
     $('startQuiz').textContent=active?'Exit Quiz':'Start Quiz';
   }
   $('startQuiz').addEventListener('click',()=>state.inQuiz?stopQuiz():startQuiz());
   function startQuiz(){
+    const invalid=inputBindings.filter(binding=>!binding.validate());
+    if(invalid.length){ invalid[0].n.focus(); return; }
     state.inQuiz=true; setQuizControls(true);
     $('visualCard').classList.add('quizActive'); $('quizCard').style.display='block'; nextQuestion();
   }
   function stopQuiz(){
     state.inQuiz=false; state.current={}; setQuizControls(false);
     $('quizCard').style.display='none'; $('visualCard').classList.remove('quizActive');
+    computeAndRender();
   }
   function updateScore(){ $('score').textContent=`Score: ${state.score}/${state.seen}`; }
 
   function nextQuestion(){
-    const rnd=(a,b,s=.01)=>Number((Math.round((a+Math.random()*(b-a))/s)*s).toFixed(3));
-    state.D1=rnd(.06,.20,.005); state.D2=rnd(.03,.16,.005);
-    state.v1=rnd(.4,4,.1); state.p1kPa=rnd(90,240,1); state.z2=rnd(-3,3,.1);
-    syncSceneControls(); computeAndRender();
+    Object.assign(state,QuizPractice.generateQuizScene(state));
+    syncSceneControls();
     const askType=chooseQuizType();
     const scene=Object.fromEntries(['rho','g','D1','D2','v1','p1kPa','z1','z2'].map(key=>[key,state[key]]));
     const answer=QuizPractice.quizAnswer(askType,scene);
@@ -621,7 +599,14 @@ const $ = id => document.getElementById(id);
       label.append(input,' '+answer.format(value)); box.appendChild(label);
     });
     $('qtext').textContent=answer.question; $('feedback').textContent='';
+    $('quizGivens').textContent=`D₁ = ${scene.D1} m · D₂ = ${scene.D2} m\nv₁ = ${scene.v1} m/s · p₁ = ${scene.p1kPa} kPa\nz₁ = ${scene.z1} m · z₂ = ${scene.z2} m\nρ = ${scene.rho} kg/m³ · g = ${scene.g} m/s²`;
     state.selection=null; $('submit').disabled=false; updateScore();
+    $('workedSolution').hidden=true; $('workedSolution').open=false; $('solutionSteps').replaceChildren();
+    computeAndRender();
+    requestAnimationFrame(()=>{
+      $('qtext').focus({preventScroll:true});
+      $('qtext').scrollIntoView({block:'nearest',behavior:'instant'});
+    });
   }
   $('submit').addEventListener('click',()=>{
     const current=state.current;
@@ -632,7 +617,11 @@ const $ = id => document.getElementById(id);
     const correct=QuizPractice.isCorrectAnswer(state.selection,current.correct);
     state.seen++; if(correct) state.score++;
     $('feedback').textContent=(correct?'Correct! ':'Not quite. Correct is ')+current.fmt(current.correct)+'.';
-    updateScore(); recordFirstAnswer(current,state.selection);
+    for(const step of QuizPractice.workedSolution(current.askType,current.scene)){
+      const item=document.createElement('li'); item.textContent=step; $('solutionSteps').appendChild(item);
+    }
+    $('workedSolution').hidden=false;
+    updateScore(); computeAndRender(); recordFirstAnswer(current,state.selection);
   });
   $('next').addEventListener('click',()=>{ if(state.inQuiz) nextQuestion(); });
 
@@ -641,13 +630,16 @@ const $ = id => document.getElementById(id);
     return QuizPractice.calculateScene(state);
   }
 
+  function answerHidden(type){
+    return state.inQuiz && !state.current.answered && state.current.askType===type;
+  }
   function computeAndRender(){
     const R=compute();
     $('s1_p').textContent= state.p1kPa.toFixed(0)+' kPa';
     $('s1_v').textContent= state.v1.toFixed(2)+' m/s';
     $('s1_z').textContent= state.z1.toFixed(2)+' m';
-    $('s2_p').textContent= (R.p2/1000).toFixed(0)+' kPa';
-    $('s2_v').textContent= R.v2.toFixed(2)+' m/s';
+    $('s2_p').textContent= answerHidden('p2kPa')?'? kPa':(R.p2/1000).toFixed(0)+' kPa';
+    $('s2_v').textContent= answerHidden('v2')?'? m/s':R.v2.toFixed(2)+' m/s';
     $('s2_z').textContent= state.z2.toFixed(2)+' m';
     draw(R);
   }
@@ -667,11 +659,19 @@ const $ = id => document.getElementById(id);
   }
 
   const ctx=$('viz').getContext('2d');
-
+  let canvasWidth=860,canvasHeight=430;
+  const resizeCanvas=()=>{
+    const rect=ctx.canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+    if(rect.width<160 || rect.height<220) return;
+    canvasWidth=rect.width; canvasHeight=rect.height;
+    ctx.canvas.width=Math.round(rect.width*dpr); ctx.canvas.height=Math.round(rect.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0); draw(compute());
+  };
+  new ResizeObserver(resizeCanvas).observe(ctx.canvas);
 
   function draw(R){
     const {D1,D2,z1,z2,v1,style}=state;
-    const W=ctx.canvas.width, H=ctx.canvas.height;
+    const W=canvasWidth, H=canvasHeight;
     ctx.clearRect(0,0,W,H);
 
     // Background
@@ -680,12 +680,14 @@ const $ = id => document.getElementById(id);
     ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
 
     // Axis & radii (pixels)
-    const x1=120, x2=W-120;
-    const y1= H*0.62 - z1*12, y2= H*0.62 - z2*12;
-    const dScale=900;
-    const r1=Math.max(10,(D1*dScale)/2);
-    const r2=Math.max(10,(D2*dScale)/2);
-    const openFrac = 0.32; // retained for legacy logic (not used in glass)
+    const margin=Math.min(120,Math.max(64,W*.16)), x1=margin, x2=W-margin;
+    const rawR1=Math.max(10,D1*450),rawR2=Math.max(10,D2*450);
+    const rawY1=-z1*12,rawY2=-z2*12;
+    const top=Math.min(rawY1-rawR1,rawY2-rawR2),bottom=Math.max(rawY1+rawR1,rawY2+rawR2);
+    const scale=Math.min(1,(H-220)/(bottom-top),(margin-14)/(Math.max(rawR1,rawR2)*.5));
+    const offset=155+(H-220-(bottom-top)*scale)/2;
+    const y1=offset+(rawY1-top)*scale,y2=offset+(rawY2-top)*scale;
+    const r1=rawR1*scale,r2=rawR2*scale;
 
     // Shadow for depth
     const shGrad = ctx.createRadialGradient((x1+x2)/2, H*0.90, 10, (x1+x2)/2, H*0.90, W*0.48);
@@ -738,7 +740,7 @@ const $ = id => document.getElementById(id);
     ctx.clip();
 
     // Flow streaklines (color by local speed, additive blend for glow)
-    const A1 = Math.PI*(2*r1/dScale)*(2*r1/dScale)/4;
+    const A1 = R.A1;
     const v2 = R.v2;
     const vMin = Math.min(v1, v2), vMax = Math.max(v1, v2);
     state.t += (0.006 + v1*0.002);
@@ -758,7 +760,7 @@ const $ = id => document.getElementById(id);
         const botEdge = yc + rc;
         const yLine = topEdge + fracY*(botEdge-topEdge);
 
-        const Dloc = 2*rc/dScale;
+        const Dloc = (1-s)*D1+s*D2;
         const Aloc = Math.PI*Dloc*Dloc/4;
         const vloc = v1 * (A1/Aloc);
 
@@ -800,48 +802,47 @@ const $ = id => document.getElementById(id);
     ctx.stroke();
 
     // Section tags
-    ctx.fillStyle='#233651'; ctx.font='21px system-ui';
-    ctx.fillText('Section 1', x1-34, y1 - r1 - 3);
-    ctx.fillText('Section 2', x2-34, y2 - r2 - 3);
+    ctx.fillStyle='#233651'; ctx.font='16px system-ui'; ctx.textAlign='center';
+    ctx.fillText('Section 1', x1, y1 - r1 - 8);
+    ctx.fillText('Section 2', x2, y2 - r2 - 8);
 
     // Gauges, velocity arrows, elevation markers
-    function gauge(x,y,val,max,label,color){
-      const rr=34, start=Math.PI, end=0;
-      ctx.beginPath(); ctx.arc(x,y,rr,start,end); ctx.strokeStyle='#dce4ee'; ctx.lineWidth=10; ctx.stroke();
-      const frac = Math.max(0, Math.min(1, val/max));
-      ctx.beginPath(); ctx.arc(x,y,rr,start, start + (end-start)*frac); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.stroke();
-      ctx.fillStyle='#5d6b7d'; ctx.font='19px system-ui'; ctx.textAlign='center';
+    function gauge(x,y,val,label,color,hidden=false){
+      const rr=30, start=Math.PI*.75, sweep=Math.PI*1.5;
+      ctx.beginPath(); ctx.arc(x,y,rr,start,start+sweep); ctx.strokeStyle='#dce4ee'; ctx.lineWidth=8; ctx.stroke();
+      if(!hidden){
+        const frac=QuizPractice.pressureGaugeFraction(val);
+        ctx.beginPath(); ctx.arc(x,y,rr,start,start+sweep*frac); ctx.strokeStyle=color; ctx.stroke();
+      }
+      ctx.fillStyle='#5d6b7d'; ctx.font='16px system-ui'; ctx.textAlign='center';
       ctx.fillText(label, x, y+rr+22);
-      ctx.fillStyle='#142033'; ctx.font='bold 21px system-ui';
-      ctx.fillText((val).toFixed(0), x, y+4);
+      ctx.fillStyle='#142033'; ctx.font='bold 18px system-ui';
+      const value=hidden?'?':Math.abs(val)>=10000?val.toExponential(1):val.toFixed(0);
+      ctx.fillText(value, x, y+5,60);
     }
-    function velArrow(x,y,vel,color){
-      const L = 10 + vel*14;
+    function velArrow(x,y,vel,color,label){
+      const L = Math.min(70,10+vel*14,W-x-14);
       ctx.strokeStyle=color; ctx.lineWidth=3;
       ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+L,y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x+L,y); ctx.lineTo(x+L-8,y-5); ctx.lineTo(x+L-8,y+5); ctx.closePath(); ctx.fillStyle=color; ctx.fill();
-      ctx.fillStyle='#5d6b7d'; ctx.font='18px system-ui'; ctx.fillText('v', x-12, y+4);
+      ctx.fillStyle=color; ctx.font='16px system-ui'; ctx.textAlign='right'; ctx.fillText(label, x-8, y+4);
     }
     function elevMark(x, yBase, z, color){
-      const yRef=H*0.92;
+      const yRef=H-32;
       ctx.strokeStyle='#cbd6e4'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(x, yRef); ctx.lineTo(x, yBase); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle=color; ctx.font='19px system-ui'; ctx.textAlign='center';
+      ctx.fillStyle=color; ctx.font='15px system-ui'; ctx.textAlign='center';
       ctx.fillText(`z=${z.toFixed(2)} m`, x, yRef+14);
     }
 
     const p1 = state.p1kPa, p2 = R.p2/1000;
-    gauge(x1-46, y1 - r1 - 80, p1, 300, 'p₁(kPa)', '#2563eb');
-    gauge(x2+46, y2 - r2 - 80, p2, 300, 'p₂(kPa)', '#2563eb');
-    velArrow(x1-46, y1 + r1 + 36, state.v1, '#047857');
-    velArrow(x2-46, y2 + r2 + 36, R.v2, '#047857');
+    gauge(x1, y1-r1-88, p1, 'p₁(kPa)', '#2563eb');
+    gauge(x2, y2-r2-88, p2, 'p₂(kPa)', '#2563eb',answerHidden('p2kPa'));
+    velArrow(x1-16, y1+r1+24, state.v1, '#047857','v₁');
+    velArrow(x2-16, y2+r2+24, R.v2, '#047857','v₂');
     elevMark(x1, y1, state.z1, '#b45309');
     elevMark(x2, y2, state.z2, '#b45309');
 
-    // Labels
-    ctx.fillStyle='#5d6b7d'; ctx.font='19px system-ui'; ctx.textAlign='left';
-    ctx.fillText('velocity', x1-86, y1+r1+52);
-    ctx.textAlign='right';
     ctx.textAlign='left';
 
   }
@@ -861,101 +862,90 @@ const $ = id => document.getElementById(id);
     });
   })();
 
-  function sceneContext(){
-    const {rho,g,D1,D2,v1,p1kPa,z1,z2} = state;
-    const R = compute();
-    return [
-      `ρ=${rho} kg/m³, g=${g} m/s²`,
-      `D1=${D1} m, D2=${D2} m`,
-      `v1=${v1} m/s, v2=${R.v2.toFixed(3)} m/s`,
-      `p1=${p1kPa} kPa (gauge), p2=${(R.p2/1000).toFixed(1)} kPa (gauge)`,
-      `z1=${z1} m, z2=${z2} m`
-    ].join('\\n');
-  }
-
-  async function sendChatGPT(userQuestion, source='typed'){
-    const endpoint = document.getElementById('chatEndpoint')?.value || '/api/chat';
-    const model = document.getElementById('chatModel')?.value || 'gpt-5.4-mini';
-    const temperature = parseFloat(document.getElementById('chatTemp')?.value || '0.2');
-    const scene = sceneContext();
-
-    const messages = [
-      { role:'system', content:
-        'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. ' +
-        'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words. ' +
-        'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, and Pitot tubes. ' +
-        'Do not introduce or explain energy grade lines (EGL) or hydraulic grade lines (HGL). ' +
-        'If asked about them, briefly say they will be covered in a later lesson and return to the current topics.'
-      },
-      { role:'user', content: `${userQuestion}\n\nCurrent scene:\n${scene}` }
+  function sceneContext(scene, quizPending){
+    const r=QuizPractice.calculateScene(scene);
+    const lines=[
+      'ρ='+scene.rho+' kg/m³, g='+scene.g+' m/s²',
+      'D1='+scene.D1+' m, D2='+scene.D2+' m',
+      'v1='+scene.v1+' m/s, p1='+scene.p1kPa+' kPa (gauge)',
+      'z1='+scene.z1+' m, z2='+scene.z2+' m',
     ];
-
-    const res = await fetch(endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model, temperature, messages,
-        question:userQuestion,
-        scene,
-        sessionId:getSessionId(),
-        requestId:newRequestId(),
-        source:`chatgpt-${source}`
-      })
-    });
-    if(!res.ok) throw new Error('Proxy error');
-    const data = await res.json();
-    return data.reply || data.choices?.[0]?.message?.content || data.output_text || '(no reply)';
+    if(quizPending) lines.push('Unsubmitted quiz: '+$('qtext').textContent+'. Give hints without revealing the numerical target answer.');
+    else lines.push('v2='+r.v2.toFixed(3)+' m/s, p2='+(r.p2/1000).toFixed(1)+' kPa (gauge)');
+    return lines.join('\n');
   }
 
-  // Coach wiring
-  const coachSendBtn = document.getElementById('coachSend');
-  const coachQ = document.getElementById('coachQ');
-  const coachChips = document.querySelectorAll('.coachChips .chip');
-
+  const coachSendBtn=$('coachSend'), coachQ=$('coachQ');
+  const coachChips=document.querySelectorAll('.coachChips .chip');
+  let activeChat=null, chatHistory=[];
+  function chatBusy(busy){
+    coachSendBtn.disabled=busy; coachSendBtn.textContent=busy?'Thinking…':'Ask';
+    coachChips.forEach(chip=>chip.disabled=busy);
+    coachLog().setAttribute('aria-busy',String(busy));
+  }
+  function cancelChat(){
+    if(activeChat) activeChat.controller.abort();
+    activeChat=null; chatHistory=[]; chatBusy(false);
+  }
+  async function sendChatGPT(question,source,request){
+    const messages=[{role:'system',content:
+      'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. '+
+      'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words. '+
+      'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, and Pitot tubes. '+
+      'Do not introduce or explain energy grade lines (EGL) or hydraulic grade lines (HGL). '+
+      'If asked about them, briefly say they will be covered in a later lesson and return to the current topics. '+
+      (request.quizPending?'The student has an unsubmitted quiz. Give conceptual hints and equations only; do not calculate or disclose its target answer, even if asked. ':'')},
+      ...chatHistory,
+      {role:'user',content:question+'\n\nCurrent scene:\n'+request.context}];
+    const res=await fetch($('chatEndpoint').value||'/api/chat',{
+      method:'POST',headers:{'Content-Type':'application/json'},signal:request.controller.signal,
+      body:JSON.stringify({model:$('chatModel').value||'gpt-5.4-mini',temperature:Number($('chatTemp').value||.2),
+        messages,question,scene:request.context,sessionId:request.sessionId,requestId:request.requestId,source:'chatgpt-'+source})
+    });
+    if(!res.ok) throw new Error('Chat unavailable');
+    const data=await res.json();
+    const reply=data.reply || data.choices?.[0]?.message?.content || data.output_text;
+    if(typeof reply!=='string'||!reply.trim()) throw new Error('Empty reply');
+    return reply;
+  }
   function bootCoach(){
     coachSay('Hi! I’m Prof. Gary\'s AI Proxy. Ask me about the flow, or try a quiz. Try “Why does pressure drop?” or “Check: v2=1.5”.');
   }
-  async function askCoachQuestion(q, source='typed'){
-    q = String(q || '').trim();
-    if(!q) return;
-    const learnerAtRequest=practice.sessionId;
-    recordSessionQuestion(q);
-    userSay(q);
-
-    const useChat = true;
-    if(!useChat){
-      logStudentQuestion(q, source);
-      coachHandle(q);
-      if(coachQ) coachQ.value='';
-      return;
+  async function askCoachQuestion(question,source='typed'){
+    const q=String(question||'').trim();
+    if(!q||activeChat) return;
+    const scene=Object.fromEntries(['rho','g','D1','D2','v1','p1kPa','z1','z2'].map(key=>[key,state[key]]));
+    const quizPending=state.inQuiz&&!state.current.answered;
+    const request={scene,quizPending,context:sceneContext(scene,quizPending),sessionId:practice.sessionId,
+      requestId:newRequestId(),controller:new AbortController()};
+    activeChat=request; chatBusy(true); recordSessionQuestion(q); userSay(q);
+    if(source==='typed') coachQ.value='';
+    const bubble=coachSay('Thinking…');
+    const timeout=setTimeout(()=>request.controller.abort(),35000);
+    try {
+      const reply=await sendChatGPT(q,source,request);
+      if(activeChat!==request) return;
+      bubble.textContent='Coach: '+reply;
+      chatHistory=[...chatHistory,{role:'user',content:q+'\n\nScene at that time:\n'+request.context},
+        {role:'assistant',content:reply}].slice(-6);
+    } catch(error){
+      if(activeChat!==request) return;
+      bubble.textContent='Coach: '+(request.controller.signal.aborted?'The AI reply took too long. ':'The AI connection is unavailable. ')+
+        'Here is help from the built-in tutor:\n\n'+builtInReply(q,request);
+      logStudentQuestion(q,'proxy-fallback-'+source,request);
+    } finally {
+      clearTimeout(timeout);
+      if(activeChat===request){
+        activeChat=null; chatBusy(false); typesetEl(bubble);
+        coachLog().scrollTop=coachLog().scrollHeight;
+      }
     }
-    try{
-      coachSay('…');
-      const reply = await sendChatGPT(q, source);
-      if(learnerAtRequest!==practice.sessionId) return;
-      const log = document.getElementById('coachLog');
-      if (log && log.lastChild) log.lastChild.innerHTML = 'Coach: ' + reply;
-      typesetEl(log.lastChild);
-    }catch(err){
-      if(learnerAtRequest!==practice.sessionId) return;
-      const log = document.getElementById('coachLog');
-      if(log && log.lastChild) log.lastChild.innerHTML = 'Coach: (proxy error, switching to built-in helper)';
-      logStudentQuestion(q, `proxy-fallback-${source}`);
-      coachHandle(q);
-    }
-    if(coachQ) coachQ.value='';
   }
-  coachSendBtn.addEventListener('click', ()=> askCoachQuestion(coachQ.value, 'typed'));
-coachQ.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter' && !e.shiftKey){
-      e.preventDefault();
-      coachSendBtn.click();
-    }
+  coachSendBtn.addEventListener('click',()=>askCoachQuestion(coachQ.value,'typed'));
+  coachQ.addEventListener('keydown',event=>{
+    if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();coachSendBtn.click();}
   });
-  coachChips.forEach(ch=> ch.addEventListener('click', ()=>{
-    const q = ch.getAttribute('data-q') || ch.textContent;
-    askCoachQuestion(q, 'chip');
-  }));
+  coachChips.forEach(chip=>chip.addEventListener('click',()=>askCoachQuestion(chip.dataset.q,'chip')));
 
   // Start coach
   bootCoach();
