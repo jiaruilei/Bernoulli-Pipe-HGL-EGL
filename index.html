@@ -51,6 +51,7 @@
   .quizActions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .legend{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
   .legend .key{display:flex; align-items:center; gap:5px; color:var(--muted); font-size:14px}
+  #toggleFlow{padding:6px 10px; font-size:14px; min-height:36px}
   .swatch{display:inline-block; width:10px; height:10px; border-radius:3px}
   .sP{background:var(--pCol)} .sV{background:var(--vCol)} .sZ{background:var(--zCol)}
   .kpi,.trio{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px}
@@ -240,6 +241,7 @@
         <span class="key"><span class="swatch sV"></span>Velocity v</span>
         <span class="key"><span class="swatch sZ"></span>Elevation z</span>
 <span class="key" style="margin-left:auto;color:#5d6b7d">Tracer motion = local speed</span>
+        <button id="toggleFlow" class="secondary" aria-pressed="false" aria-controls="viz">Pause animation</button>
       </div>
 
 
@@ -932,10 +934,16 @@ const $ = id => document.getElementById(id);
 
   // Start
   computeAndRender();
-  const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+  // Flow motion is part of the lesson; let the student pause or resume it.
+  let animationPaused=false;
+  $('toggleFlow').addEventListener('click',()=>{
+    animationPaused=!animationPaused;
+    $('toggleFlow').textContent=animationPaused?'Play animation':'Pause animation';
+    $('toggleFlow').setAttribute('aria-pressed',String(animationPaused));
+  });
   let previousFrame=null;
   function loop(now){
-    if(previousFrame!==null && !document.hidden && !reducedMotion.matches){
+    if(previousFrame!==null && !document.hidden && !animationPaused){
       const dt=Math.min((now-previousFrame)/1000,.05);
       const meanDiameterSquared=(state.D1**2+state.D1*state.D2+state.D2**2)/3;
       state.t=(state.t+dt*.10*state.v1*state.D1**2/meanDiameterSquared)%1;
