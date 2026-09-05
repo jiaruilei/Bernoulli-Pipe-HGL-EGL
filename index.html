@@ -812,7 +812,7 @@ const $ = id => document.getElementById(id);
       const frac = Math.max(0, Math.min(1, val/max));
       ctx.beginPath(); ctx.arc(x,y,rr,start, start + (end-start)*frac); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.stroke();
       ctx.fillStyle='#5d6b7d'; ctx.font='19px system-ui'; ctx.textAlign='center';
-      ctx.fillText(label, x, y+rr+12);
+      ctx.fillText(label, x, y+rr+22);
       ctx.fillStyle='#142033'; ctx.font='bold 21px system-ui';
       ctx.fillText((val).toFixed(0), x, y+4);
     }
