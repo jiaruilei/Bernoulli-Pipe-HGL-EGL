@@ -257,8 +257,7 @@
               <div class="pill" id="score">Score: 0/0</div>
             </div>
             <div id="feedback" class="msg" role="status"></div>
-            <div class="small">Values stay fixed for each question. Exit Quiz to explore.</div>
-            <div class="small" id="quizSaveStatus" role="status">First quiz submissions are recorded for teaching and learning support.</div>
+            <div class="small" id="quizSaveStatus" role="status" hidden></div>
             <button id="retryQuizSave" class="secondary" hidden>Retry saving</button>
           </div>
         </div>
@@ -421,7 +420,8 @@ const $ = id => document.getElementById(id);
     const count=pendingAttempts().length;
     $('quizSaveStatus').textContent=count
       ? `${count} quiz ${count===1?'answer is':'answers are'} waiting to save${uploadFailed?'. Check your connection or retry.':'.'}`
-      : 'First quiz submissions are recorded for teaching and learning support.';
+      : '';
+    $('quizSaveStatus').hidden=!count;
     $('retryQuizSave').hidden=!count;
     if(count && !storageWorking) $('quizSaveStatus').textContent+=' Keep this page open until saving finishes.';
   }
