@@ -31,7 +31,7 @@ test('quiz logging is validated, durable, deduplicated and export-protected',asy
   }
   async function stop(){if(child&&child.exitCode===null){const closed=once(child,'exit');child.kill();await closed;}}
   const attempt={questionId:'q-1',sessionId:'learner-1',type:'v2',mode:'auto',selectedAnswer:4,
-    scene:{rho:1000,g:9.81,D1:.1,D2:.05,v1:1,p1kPa:180,z1:0,z2:2},clientTimestamp:'2026-09-05T00:00:00Z'};
+    scene:{rho:1000,g:9.80,D1:.1,D2:.05,v1:1,p1kPa:180,z1:0,z2:2},clientTimestamp:'2026-09-05T00:00:00Z'};
   const post=body=>fetch(base+'/api/quiz/attempts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   try{
     await start();

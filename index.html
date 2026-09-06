@@ -187,7 +187,7 @@
       </div>
       <div class="row">
         <label>Gravity g (m/s²)</label>
-        <input id="g" type="number" step="0.01" min="1" max="20" value="9.81">
+        <input id="g" type="number" step="0.01" min="1" max="20" value="9.80">
       </div>
 
       <hr style="border:0;border-top:1px dashed #dce4ee;margin:10px 0">
@@ -206,9 +206,9 @@
 
       <div class="row">
         <label>Upstream speed v₁ (m/s)</label>
-        <input id="v1n" type="number" step="0.1" min="0.1" max="6" value="1.0">
+        <input id="v1n" type="number" step="0.1" min="0" max="6" value="1.0">
       </div>
-      <input id="v1" type="range" min="0.1" max="6" step="0.1" value="1.0">
+      <input id="v1" type="range" min="0" max="6" step="0.1" value="1.0">
 
       <div class="row">
         <label>Upstream gauge pressure p₁ (kPa)</label>
@@ -508,7 +508,9 @@ const $ = id => document.getElementById(id);
   function builtInReply(question, request){
     if(request.quizPending) return 'Start with continuity: A₁v₁ = A₂v₂ and A = πD²/4. Then use the equation for the quantity asked: Bernoulli for pressure, Q = Av for flow rate, Δhₚ = v²/(2g) for Pitot head, or Δh = (p₁ − p₂)/(ρg) for this quiz’s pressure-head difference. Submit your answer to see the worked solution.';
     const scene=request.scene, r=QuizPractice.calculateScene(scene), q=question.toLowerCase();
-    if(q.includes('increase v2')||q.includes('increase v₂')) return 'To increase v₂, decrease D₂ or increase v₁. Continuity gives v₂ = v₁(D₁/D₂)². Higher speed tends to lower pressure when elevation stays fixed.';
+    if(q.includes('increase v2')||q.includes('increase v₂')) return scene.v1===0
+      ? 'First increase v₁ above zero. With no flow, v₂ = v₁(D₁/D₂)² = 0 for any pipe diameter. Changing D₂ alone cannot start the flow.'
+      : 'To increase v₂, decrease D₂ or increase v₁. Continuity gives v₂ = v₁(D₁/D₂)². Higher speed tends to lower pressure when elevation stays fixed.';
     if(q.startsWith('check')){
       const match=q.replace(/\s+/g,'').match(/(v2|p2)=(-?\d*\.?\d+)/);
       if(!match) return 'Try “Check: v2=1.5” or “Check: p2=140”.';
@@ -525,7 +527,7 @@ const $ = id => document.getElementById(id);
   }
 
   const state = {
-    rho:1000, g:9.81, D1:0.10, D2:0.05, v1:1.0, p1kPa:180, z1:0.0, z2:2.0,
+    rho:1000, g:QuizPractice.DEFAULT_GRAVITY, D1:0.10, D2:0.05, v1:1.0, p1kPa:180, z1:0.0, z2:2.0,
     style:'glass', // fixed to glass (closed top)
     inQuiz:false, score:0, seen:0, current:{}, selection:null,
     t:0
@@ -561,13 +563,13 @@ const $ = id => document.getElementById(id);
 
   function resetScene(){
     stopQuiz();
-    Object.assign(state,{rho:1000,g:9.81,D1:.10,D2:.05,v1:1,p1kPa:180,z1:0,z2:2});
+    Object.assign(state,{rho:1000,g:QuizPractice.DEFAULT_GRAVITY,D1:.10,D2:.05,v1:1,p1kPa:180,z1:0,z2:2});
     syncSceneControls(); state.score=0; state.seen=0; updateScore(); computeAndRender();
   }
   $('reset').addEventListener('click',resetScene);
   function syncSceneControls(){
     for(const {n,s,key,validate} of inputBindings){
-      n.value=state[key]; if(s) s.value=state[key]; validate();
+      n.value=key==='g'?QuizPractice.formatGravity(state[key]):state[key]; if(s) s.value=state[key]; validate();
     }
   }
   function setQuizControls(active){
@@ -606,7 +608,7 @@ const $ = id => document.getElementById(id);
       label.append(input,' '+answer.format(value)); box.appendChild(label);
     });
     $('qtext').textContent=answer.question; $('feedback').textContent='';
-    $('quizGivens').textContent=`D₁ = ${scene.D1} m · D₂ = ${scene.D2} m\nv₁ = ${scene.v1} m/s · p₁ = ${scene.p1kPa} kPa\nz₁ = ${scene.z1} m · z₂ = ${scene.z2} m\nρ = ${scene.rho} kg/m³ · g = ${scene.g} m/s²`;
+    $('quizGivens').textContent=`D₁ = ${scene.D1} m · D₂ = ${scene.D2} m\nv₁ = ${scene.v1} m/s · p₁ = ${scene.p1kPa} kPa\nz₁ = ${scene.z1} m · z₂ = ${scene.z2} m\nρ = ${scene.rho} kg/m³ · g = ${QuizPractice.formatGravity(scene.g)} m/s²`;
     state.selection=null; $('submit').disabled=false; updateScore();
     $('workedSolution').hidden=true; $('workedSolution').open=false; $('solutionSteps').replaceChildren();
     computeAndRender();
@@ -801,6 +803,10 @@ const $ = id => document.getElementById(id);
       ctx.fillText(value, x, y+5,60);
     }
     function velArrow(x,y,vel,color,label){
+      if(vel===0){
+        ctx.fillStyle=color; ctx.font='16px system-ui'; ctx.textAlign='center';
+        ctx.fillText(label+' = 0',x+16,y+4); return;
+      }
       const L = Math.min(70,10+vel*14,W-x-14);
       ctx.strokeStyle=color; ctx.lineWidth=3;
       ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+L,y); ctx.stroke();
@@ -845,7 +851,7 @@ const $ = id => document.getElementById(id);
   function sceneContext(scene, quizPending){
     const r=QuizPractice.calculateScene(scene);
     const lines=[
-      'ρ='+scene.rho+' kg/m³, g='+scene.g+' m/s²',
+      'ρ='+scene.rho+' kg/m³, g='+QuizPractice.formatGravity(scene.g)+' m/s²',
       'D1='+scene.D1+' m, D2='+scene.D2+' m',
       'v1='+scene.v1+' m/s, p1='+scene.p1kPa+' kPa (gauge)',
       'z1='+scene.z1+' m, z2='+scene.z2+' m',
@@ -870,7 +876,7 @@ const $ = id => document.getElementById(id);
   async function sendChatGPT(question,source,request){
     const messages=[{role:'system',content:
       'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. '+
-      'Use Bernoulli appropriately and the current scene numbers. Prefer ≤120 words. '+
+      'Use Bernoulli appropriately and the current scene numbers. Use the supplied scene gravity exactly for all calculations; the default is '+QuizPractice.DEFAULT_GRAVITY.toFixed(2)+' m/s². Prefer ≤120 words. '+
       'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, and Pitot tubes. '+
       'Do not introduce or explain energy grade lines (EGL) or hydraulic grade lines (HGL). '+
       'If asked about them, briefly say they will be covered in a later lesson and return to the current topics. '+
