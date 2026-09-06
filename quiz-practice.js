@@ -4,12 +4,16 @@ export const QUIZ_LABELS = Object.freeze({
   dhMano: 'Manometer', dhPitot: 'Pitot tube', Q: 'Flow rate',
 });
 export const QUIZ_TYPES = Object.freeze(Object.keys(QUIZ_LABELS));
+export const DEFAULT_GRAVITY = 9.80;
+export function formatGravity(value) {
+  return value===DEFAULT_GRAVITY?value.toFixed(2):String(value);
+}
 // Keep previous mode names valid for older submissions waiting to upload.
 export const PRACTICE_MODES = Object.freeze(['session', 'auto', 'balanced', ...QUIZ_TYPES]);
 
 export const PARAMETER_LIMITS = Object.freeze({
   rho:[500,2000], g:[1,20], D1:[.03,.5], D2:[.02,.5],
-  v1:[.1,6], p1kPa:[0,500], z2:[-10,10],
+  v1:[0,6], p1kPa:[0,500], z2:[-10,10],
 });
 
 export function validParameter(key, raw) {
@@ -20,7 +24,7 @@ export function validParameter(key, raw) {
 
 // Introductory quiz examples: moderate speeds and positive gauge pressures.
 // Explore mode retains the wider input range.
-export function generateQuizScene({rho=1000,g=9.81}={}, random=Math.random) {
+export function generateQuizScene({rho=1000,g=DEFAULT_GRAVITY}={}, random=Math.random) {
   if(!validParameter('rho',rho)||!validParameter('g',g)) throw new Error('Invalid fluid parameters');
   const rnd=(a,b,step)=>Number((Math.round((a+random()*(b-a))/step)*step).toFixed(3));
   for(let tries=0;tries<100;tries++) {
@@ -37,15 +41,15 @@ export function pressureGaugeFraction(value) {
 }
 
 export function workedSolution(type, scene) {
-  const r=calculateScene(scene), answer=quizAnswer(type,scene);
+  const r=calculateScene(scene), answer=quizAnswer(type,scene), gravity=formatGravity(scene.g);
   const f=(value,n=3)=>Number(value.toFixed(n)).toString();
   const velocity=`Continuity: v₂ = v₁(D₁/D₂)² = ${scene.v1} × (${scene.D1}/${scene.D2})² = ${f(r.v2)} m/s.`;
-  const pressure=`Bernoulli: p₂ = p₁ + ½ρ(v₁² − v₂²) + ρg(z₁ − z₂).\nUsing Pa: p₂ = ${scene.p1kPa*1000} + ½ × ${scene.rho} × (${scene.v1}² − (${scene.v1} × (${scene.D1}/${scene.D2})²)²) + ${scene.rho} × ${scene.g} × (${scene.z1} − (${scene.z2})) = ${f(r.p2)} Pa.`;
+  const pressure=`Bernoulli: p₂ = p₁ + ½ρ(v₁² − v₂²) + ρg(z₁ − z₂).\nUsing Pa: p₂ = ${scene.p1kPa*1000} + ½ × ${scene.rho} × (${scene.v1}² − (${scene.v1} × (${scene.D1}/${scene.D2})²)²) + ${scene.rho} × ${gravity} × (${scene.z1} − (${scene.z2})) = ${f(r.p2)} Pa.`;
   const steps={
     v2:[velocity],
     p2kPa:[velocity,pressure,'Divide Pa by 1000 to obtain kPa (gauge).'],
-    dhMano:[velocity,pressure,`For the pressure-head difference used in this quiz: Δh = (p₁ − p₂)/(ρg) = (${scene.p1kPa*1000} − ${f(r.p2)})/(${scene.rho} × ${scene.g}) = ${f(r.dhMano)} m.`],
-    dhPitot:[velocity,`Pitot velocity head: Δhₚ = v₂²/(2g) = (${scene.v1} × (${scene.D1}/${scene.D2})²)²/(2 × ${scene.g}) = ${f(r.dhPitot)} m.`],
+    dhMano:[velocity,pressure,`For the pressure-head difference used in this quiz: Δh = (p₁ − p₂)/(ρg) = (${scene.p1kPa*1000} − ${f(r.p2)})/(${scene.rho} × ${gravity}) = ${f(r.dhMano)} m.`],
+    dhPitot:[velocity,`Pitot velocity head: Δhₚ = v₂²/(2g) = (${scene.v1} × (${scene.D1}/${scene.D2})²)²/(2 × ${gravity}) = ${f(r.dhPitot)} m.`],
     Q:[`Area: A₁ = πD₁²/4 = π × ${scene.D1}²/4 = ${f(r.A1,6)} m².`,
       `Flow rate: Q = A₁v₁ = (π × ${scene.D1}²/4) × ${scene.v1} = ${f(r.Q,6)} m³/s. Multiply by 1000 for L/s.`],
   };

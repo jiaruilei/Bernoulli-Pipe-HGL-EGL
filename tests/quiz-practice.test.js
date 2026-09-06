@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {QUIZ_TYPES,calculateScene,quizAnswer,isCorrectAnswer,sessionTopics,sessionTopicCounts,
   sessionProbabilities,chooseSessionTopic,answerChoices,validateAttempt,PARAMETER_LIMITS,
-  validParameter,generateQuizScene,pressureGaugeFraction,workedSolution} from '../quiz-practice.js';
+  validParameter,generateQuizScene,pressureGaugeFraction,workedSolution,DEFAULT_GRAVITY,formatGravity} from '../quiz-practice.js';
 
-const scene={rho:1000,g:9.81,D1:.1,D2:.05,v1:1,p1kPa:180,z1:0,z2:2};
+const scene={rho:1000,g:9.80,D1:.1,D2:.05,v1:1,p1kPa:180,z1:0,z2:2};
 
 test('incomplete and out-of-range inputs do not enter the physics calculation',()=>{
   for(const [key,[min,max]] of Object.entries(PARAMETER_LIMITS)){
@@ -17,7 +17,7 @@ test('incomplete and out-of-range inputs do not enter the physics calculation',(
 test('generated quizzes stay within the introductory teaching range for all fluid limits',()=>{
   let seed=90210;
   const random=()=>((seed=(1664525*seed+1013904223)>>>0)/2**32);
-  for(const rho of [500,1000,2000]) for(const g of [1,9.81,20]) for(let i=0;i<2500;i++){
+  for(const rho of [500,1000,2000]) for(const g of [1,9.80,20]) for(let i=0;i<2500;i++){
     const sample=generateQuizScene({rho,g},random),r=calculateScene(sample);
     assert.ok(r.v2>=.2&&r.v2<=8); assert.ok(r.p2>=20000&&r.p2<=300000);
     assert.equal(sample.rho,rho); assert.equal(sample.g,g);
@@ -25,7 +25,39 @@ test('generated quizzes stay within the introductory teaching range for all flui
   }
   const fallback=generateQuizScene({rho:2000,g:20},()=>.99);
   assert.ok(calculateScene(fallback).p2>=20000);
-  assert.throws(()=>generateQuizScene({rho:0,g:9.81}));
+  assert.throws(()=>generateQuizScene({rho:0,g:9.80}));
+});
+
+test('new quizzes use gravity 9.80 and custom gravity is displayed without rounding',()=>{
+  assert.equal(DEFAULT_GRAVITY,9.80);
+  assert.equal(generateQuizScene().g,9.80);
+  assert.equal(generateQuizScene({g:9.806}).g,9.806);
+  assert.equal(formatGravity(9.8),'9.80');
+  assert.equal(formatGravity(9.806),'9.806');
+  for(const type of ['p2kPa','dhMano','dhPitot']){
+    assert.match(workedSolution(type,scene).join(' '),/9\.80/);
+    assert.match(workedSolution(type,{...scene,g:9.806}).join(' '),/9\.806/);
+  }
+});
+
+test('zero flow obeys hydrostatic pressure and grades correctly for every quiz topic',()=>{
+  assert.equal(validParameter('v1',0),true);
+  assert.equal(validParameter('v1',-.1),false);
+  for(const D2 of [.02,.1,.5]) for(const [z2,pressure] of [[-2,199600],[0,180000],[2,160400]]){
+    const still={...scene,v1:0,D2,z2},r=calculateScene(still);
+    assert.equal(r.v2,0); assert.equal(r.Q,0); assert.equal(r.dhPitot,0);
+    assert.equal(r.p2,pressure); assert.equal(r.dhMano,z2);
+    for(const type of QUIZ_TYPES){
+      const answer=quizAnswer(type,still);
+      const choices=answerChoices(answer.value,answer.format,()=>.5);
+      assert.equal(new Set(choices.map(answer.format)).size,4);
+      assert.equal(choices.filter(value=>isCorrectAnswer(value,answer.value)).length,1);
+      const attempt=validateAttempt({questionId:'still-1',sessionId:'still-session',mode:'session',type,
+        scene:still,selectedAnswer:answer.value});
+      assert.equal(attempt.correct,true);
+      assert.doesNotMatch(workedSolution(type,still).join(' '),/NaN|Infinity|undefined/);
+    }
+  }
 });
 
 test('pressure ring fill increases on the shared 0–500 kPa scale',()=>{
@@ -38,22 +70,22 @@ test('pressure ring fill increases on the shared 0–500 kPa scale',()=>{
 });
 
 test('worked solutions use the quiz calculation and its displayed units for all topics',()=>{
-  const expected={v2:'4.00 m/s',p2kPa:'153 kPa',dhMano:'2.76 m',dhPitot:'0.82 m',Q:'7.85 L/s'};
+  const expected={v2:'4.00 m/s',p2kPa:'153 kPa',dhMano:'2.77 m',dhPitot:'0.82 m',Q:'7.85 L/s'};
   for(const type of QUIZ_TYPES){
     const steps=workedSolution(type,scene);
     assert.equal(steps.at(-1),'Answer: '+expected[type]);
     assert.ok(steps.length>=2);
     assert.doesNotMatch(steps.join(' '),/NaN|Infinity|undefined/);
   }
-  assert.match(workedSolution('p2kPa',scene).join(' '),/152880 Pa/);
+  assert.match(workedSolution('p2kPa',scene).join(' '),/152900 Pa/);
   assert.match(workedSolution('Q',scene).join(' '),/Multiply by 1000/);
 });
 
 test('the existing physical quantities and quiz units are preserved',()=>{
   const r=calculateScene(scene);
-  assert.equal(r.v2,4); assert.equal(r.p2,152880);
-  assert.equal(r.dhMano,27120/9810); assert.equal(r.dhPitot,16/19.62);
-  assert.equal(quizAnswer('p2kPa',scene).value,152.88);
+  assert.equal(r.v2,4); assert.equal(r.p2,152900);
+  assert.equal(r.dhMano,27100/9800); assert.equal(r.dhPitot,16/19.6);
+  assert.equal(quizAnswer('p2kPa',scene).value,152.9);
   assert.equal(quizAnswer('Q',scene).value,r.Q*1000);
   assert.equal(quizAnswer('dhPitot',scene).unit,'m');
 });
