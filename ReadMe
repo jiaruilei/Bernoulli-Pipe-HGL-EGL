@@ -1,4 +1,4 @@
-# Bernoulli (Week 5)
+# Bernoulli
 
 Run `npm install`, then `npm start`. Run the calculation and API regression checks with `npm test`.
 
