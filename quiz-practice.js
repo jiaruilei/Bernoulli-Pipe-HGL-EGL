@@ -63,6 +63,53 @@ export function calculateScene({rho,g,D1,D2,v1,p1kPa,z1,z2}) {
   return {A1,A2,v2,p2,dhMano:(p1-p2)/(rho*g),dhPitot:v2*v2/(2*g),Q:A1*v1};
 }
 
+// Grade elevations share the pipe's z datum and are expressed in metres.
+// The illustrated pipe tapers linearly; constant flow and no head loss make
+// EGL constant while HGL follows EGL minus the local velocity head.
+export function calculateGradeLines(scene, sampleCount=81) {
+  if(!Number.isInteger(sampleCount)||sampleCount<2||sampleCount>10001) {
+    throw new RangeError('Grade-line sample count must be an integer from 2 to 10001');
+  }
+  const {rho,g,D1,D2,v1,p1kPa,z1,z2}=scene;
+  const flow=calculateScene(scene);
+  const egl=z1+p1kPa*1000/(rho*g)+v1*v1/(2*g);
+  const points=Array.from({length:sampleCount},(_,index)=>{
+    const s=index/(sampleCount-1);
+    const diameter=index===sampleCount-1?D2:D1+s*(D2-D1);
+    const z=index===sampleCount-1?z2:z1+s*(z2-z1);
+    const velocity=index===0?v1:index===sampleCount-1?flow.v2:
+      flow.Q/(Math.PI*diameter*diameter/4);
+    const velocityHead=velocity*velocity/(2*g);
+    const hgl=egl-velocityHead;
+    return {s,z,diameter,velocity,pressureHead:hgl-z,velocityHead,hgl,egl};
+  });
+  return {points,section1:points[0],section2:points.at(-1)};
+}
+
+// Keep centreline elevations and grade lines on one affine metre scale.
+// Pipe radii are enlarged for legibility, preserving their diameter ratio.
+export function calculatePipeDiagramLayout(scene,{width=860,height=620,revealGrades=true}={}) {
+  const profile=calculateGradeLines(scene);
+  const margin=Math.min(width*.26,Math.max(86,Math.min(140,width*.17)));
+  const x1=margin,x2=width-margin,plotTop=160,plotBottom=height-75;
+  const plotHeight=plotBottom-plotTop;
+  const radiusLimit=Math.min(55,.16*plotHeight,.45*(x2-x1),2*Math.max(4,margin-60));
+  const radiusScale=Math.min(360,radiusLimit/Math.max(scene.D1,scene.D2));
+  const r1=scene.D1*radiusScale,r2=scene.D2*radiusScale;
+  const padding=Math.max(r1,r2)+26;
+  // During a quiz, axis limits and pipe placement depend only on the given
+  // geometry; an undisclosed pressure or speed cannot change the framing.
+  const heads=[0,scene.z1,scene.z2];
+  if(revealGrades) for(const point of profile.points) heads.push(point.hgl,point.egl);
+  const low=Math.min(...heads),high=Math.max(...heads);
+  const span=Math.max(4,high-low),midpoint=(low+high)/2;
+  const headPadding=span*padding/(plotHeight-2*padding);
+  const minHead=midpoint-span/2-headPadding,maxHead=midpoint+span/2+headPadding;
+  const yForHead=head=>plotBottom-(head-minHead)/(maxHead-minHead)*plotHeight;
+  return {profile,x1,x2,y1:yForHead(scene.z1),y2:yForHead(scene.z2),r1,r2,
+    plotTop,plotBottom,minHead,maxHead,yForHead};
+}
+
 export function quizAnswer(type, scene) {
   if (!QUIZ_TYPES.includes(type)) throw new Error('Unknown quiz topic');
   const r=calculateScene(scene);

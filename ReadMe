@@ -2,6 +2,14 @@
 
 Run `npm install`, then `npm start`. Run the calculation and API regression checks with `npm test`.
 
+## Hydraulic and energy grade lines
+
+- HGL = z + p/(ρg) and EGL = HGL + v²/(2g) are drawn directly over the enlarged pipe-flow animation, with labels on the lines and display switches above it. The grade lines and animated pipe centreline share one metre scale; pipe diameter is enlarged for visibility.
+- The existing steady, incompressible, no-loss model is retained: EGL stays horizontal. Between the sections, the profile follows the schematic's linear diameter and elevation taper, with velocity calculated from continuity. No physical pipe length is implied.
+- HGL and EGL are illustrations within the animation, with simple line labels. There is no separate head-values section or explanatory scale note. With no flow, HGL and EGL coincide; negative gauge pressure places HGL below the centreline.
+- The grade lines are hidden while a quiz question is unanswered and revealed after submission. The pipe stays animated; its quiz framing depends only on the given elevations and diameters so hidden answers are not exposed by the axis scale. Quiz questions, selection, scoring, worked solutions, and recording are unchanged. The AI coach and built-in tutor can explain grade lines.
+- On localhost, the webpage uses the local API for review, keeping review chat and quiz records off the production server. The local built-in tutor works without an API key.
+
 ## Current-session quiz practice (Option A)
 
 - Each tab session starts with an equal mix of the five taught topics. Only questions the learner asks in that session influence subsequent quiz selection. Questions are matched to the taught topics locally, once per send, including when the AI proxy is unavailable.

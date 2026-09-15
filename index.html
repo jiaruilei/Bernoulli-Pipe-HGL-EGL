@@ -20,7 +20,7 @@
   button,input,select,textarea{font:inherit}
   button{cursor:pointer}
   button:disabled{cursor:not-allowed; opacity:.55}
-  .wrap{width:min(1320px,100%); margin:0 auto; overflow:hidden; border:1px solid #e2e8f0; border-radius:22px; background:var(--panel); box-shadow:var(--shadow)}
+  .wrap{width:min(1480px,100%); margin:0 auto; overflow:hidden; border:1px solid #e2e8f0; border-radius:22px; background:var(--panel); box-shadow:var(--shadow)}
   h1{margin:0; padding:22px; border-bottom:1px solid var(--line); font-size:clamp(28px,3vw,36px); line-height:1.15}
   .sub{color:var(--muted); font-size:17px; margin-bottom:16px}
   .grid{display:grid; grid-template-columns:360px minmax(0,1fr); gap:0; align-items:stretch}
@@ -40,13 +40,13 @@
   button.secondary{border-color:#b9c8da; background:#fff; color:#233651}
   button.secondary:hover{background:#f0f5fb}
   button:active{transform:translateY(1px)}
-  .canvasWrap{position:relative; height:430px; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff}
+  .canvasWrap{position:relative; height:620px; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff}
   .canvasWrap canvas{display:block; width:100%; height:100%}
   .visualQuizRow{display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start}
   .visualPanel{min-width:0}
-  .vizCard.quizActive .visualQuizRow{grid-template-columns:minmax(0,1.7fr) minmax(270px,300px)}
+  .vizCard.quizActive .visualQuizRow{grid-template-columns:minmax(0,1fr)}
   .vizCard.quizActive #quizCard{margin-top:0 !important; align-self:start}
-  .vizCard.quizActive .canvasWrap{height:clamp(310px,24vw,380px)}
+  .vizCard.quizActive .canvasWrap{height:620px}
   .visualQuizRow #quizCard .choices{grid-template-columns:1fr}
   .quizActions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .legend{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
@@ -54,6 +54,15 @@
   #toggleFlow{padding:6px 10px; font-size:14px; min-height:36px}
   .swatch{display:inline-block; width:10px; height:10px; border-radius:3px}
   .sP{background:var(--pCol)} .sV{background:var(--vCol)} .sZ{background:var(--zCol)}
+  .gradeHeader{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px}
+  .gradeHeader h2{margin:0; font-size:22px; color:#172b4d}
+  .gradeHeader span{font-size:14px; color:var(--muted)}
+  .gradeLegend{display:flex; flex-wrap:wrap; gap:10px 20px; margin:12px 0; font-size:15px}
+  .gradeLegend label,.gradeLegend span{display:flex; align-items:center; gap:7px}
+  .gradeLegend label{cursor:pointer}
+  .lineKey{display:inline-block; width:26px; height:0; border-top:3px solid #047857}
+  .lineKey.egl{border-color:#7c3aed; border-top-style:dashed}
+  .lineKey.elevation{border-color:#64748b; border-top-style:dotted}
   .kpi,.trio{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:10px}
   .kpi .box,.tile{min-width:0; padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:#fff}
   .kpi .t,.tile .ttl{font-size:14px; font-weight:700; color:var(--muted)}
@@ -111,19 +120,19 @@
   @media (max-width:1250px){
     .vizCard.quizActive .visualQuizRow{grid-template-columns:1fr}
     .vizCard.quizActive #quizCard{margin-top:0 !important; grid-row:1}
-    .vizCard.quizActive .canvasWrap{height:430px}
+    .vizCard.quizActive .canvasWrap{height:600px}
   }
   @media (max-width:1050px){
     body{padding:10px}
     .grid{grid-template-columns:320px minmax(0,1fr)}
-    .canvasWrap{height:410px}
+    .canvasWrap{height:600px}
   }
   @media (max-width:980px){
     .grid{grid-template-columns:1fr}
     #controls{border-right:0; border-bottom:1px solid var(--line)}
     #controls.quizActive #parameterFields{display:none}
     #quizGivens{display:block}
-    .vizCard.quizActive .canvasWrap{height:350px}
+    .vizCard.quizActive .canvasWrap{height:580px}
   }
   @media (max-width:790px){
     body{padding:0; background:#fff}
@@ -142,7 +151,7 @@
     .kpi .t,.tile .ttl{font-size:13px}
     .choices{grid-template-columns:1fr}
     .sectionHeader{align-items:flex-start}
-    .canvasWrap,.vizCard.quizActive .canvasWrap{height:340px}
+    .canvasWrap,.vizCard.quizActive .canvasWrap{height:560px}
   }
 </style>
 
@@ -234,7 +243,16 @@
     <div class="card vizCard" id="visualCard">
       <div class="visualQuizRow">
         <div class="visualPanel">
-          <div class="canvasWrap"><canvas id="viz" width="860" height="430" role="img" aria-label="Pipe flow diagram with tracer particles showing flow direction and speed. Pressure rings run clockwise from 0 to 500 kPa. Numerical values appear below."></canvas></div>
+          <div class="gradeHeader">
+            <h2 id="animationTitle">Pipe flow, HGL &amp; EGL</h2>
+            <span>Ideal flow · no energy loss</span>
+          </div>
+          <div class="gradeLegend" aria-label="Grade-line display controls">
+            <label><input id="showHGL" type="checkbox" checked aria-controls="viz"><i class="lineKey" aria-hidden="true"></i>HGL</label>
+            <label><input id="showEGL" type="checkbox" checked aria-controls="viz"><i class="lineKey egl" aria-hidden="true"></i>EGL</label>
+            <span><i class="lineKey elevation" aria-hidden="true"></i>Pipe centreline z</span>
+          </div>
+          <div class="canvasWrap"><canvas id="viz" width="860" height="620" role="img" aria-label="Animated pipe flow with hydraulic and energy grade lines."></canvas></div>
 
       <div class="legend">
         <span class="key"><span class="swatch sP"></span>Pressure p (rings: 0–500 kPa)</span>
@@ -316,6 +334,7 @@
         <div class="coachChips">
           <button class="chip" data-q="How do I increase v2?">How do I increase v₂?</button>
           <button class="chip" data-q="Walk me through Bernoulli">Walk me through Bernoulli</button>
+          <button class="chip" data-q="Explain the HGL and EGL in this scene">Explain HGL &amp; EGL</button>
           <button class="chip" data-q="Check: v2= ?">Check: v₂ = ?</button>
           <button class="chip" data-q="Challenge me">Challenge me</button>
         </div>
@@ -347,6 +366,8 @@ import * as QuizPractice from "./quiz-practice.js";
     }catch(e){ /* no-op */ }
   }
 const $ = id => document.getElementById(id);
+// Local reviews use their own API and teaching records.
+if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)) $('chatEndpoint').value='/api/chat';
 
 
   // --- AI Coach helpers ---
@@ -508,6 +529,13 @@ const $ = id => document.getElementById(id);
   function builtInReply(question, request){
     if(request.quizPending) return 'Start with continuity: A₁v₁ = A₂v₂ and A = πD²/4. Then use the equation for the quantity asked: Bernoulli for pressure, Q = Av for flow rate, Δhₚ = v²/(2g) for Pitot head, or Δh = (p₁ − p₂)/(ρg) for this quiz’s pressure-head difference. Submit your answer to see the worked solution.';
     const scene=request.scene, r=QuizPractice.calculateScene(scene), q=question.toLowerCase();
+    if(/\bhgl\b|\begl\b|grade line/i.test(q)){
+      const {section1:a,section2:b}=QuizPractice.calculateGradeLines(scene);
+      return 'HGL = z + p/(ρg): elevation plus pressure head. EGL = HGL + v²/(2g): total head.\n'+
+        `Here HGL₁ = ${fmt(a.hgl,3)} m and HGL₂ = ${fmt(b.hgl,3)} m. EGL = ${fmt(a.egl,3)} m at both sections because this model has no energy losses, pump or turbine.\n`+
+        (scene.v1===0?'With no flow, velocity head is zero and HGL coincides with EGL.':
+        'The vertical gap EGL − HGL is velocity head. A smaller diameter increases speed and widens this gap.');
+    }
     if(q.includes('increase v2')||q.includes('increase v₂')) return scene.v1===0
       ? 'First increase v₁ above zero. With no flow, v₂ = v₁(D₁/D₂)² = 0 for any pipe diameter. Changing D₂ alone cannot start the flow.'
       : 'To increase v₂, decrease D₂ or increase v₁. Continuity gives v₂ = v₁(D₁/D₂)². Higher speed tends to lower pressure when elevation stays fixed.';
@@ -650,8 +678,24 @@ const $ = id => document.getElementById(id);
     $('s2_p').textContent= answerHidden('p2kPa')?'? kPa':(R.p2/1000).toFixed(0)+' kPa';
     $('s2_v').textContent= answerHidden('v2')?'? m/s':R.v2.toFixed(2)+' m/s';
     $('s2_z').textContent= state.z2.toFixed(2)+' m';
-    draw(R);
+    renderGradeLines();
   }
+
+  // Grade lines are illustrations in the animation; quiz behaviour is unchanged.
+  function renderGradeLines(){
+    const pending=state.inQuiz&&!state.current.answered;
+    $('showHGL').disabled=pending; $('showEGL').disabled=pending;
+    draw(compute());
+    if(pending){
+      $('viz').setAttribute('aria-label','Animated pipe flow with tracer particles. Grade lines are hidden until this quiz answer is submitted.');
+      return;
+    }
+    const showHGL=$('showHGL').checked,showEGL=$('showEGL').checked;
+    $('viz').setAttribute('aria-label',`Animated pipe flow with tracer particles. ${showHGL?'Green solid HGL':'HGL hidden'}; ${showEGL?'purple dashed EGL':'EGL hidden'}; grey dotted pipe centreline. `+
+      (state.v1===0?'At zero flow, HGL and EGL coincide.':'EGL stays level; HGL follows the changing flow speed.'));
+  }
+  $('showHGL').addEventListener('change',renderGradeLines);
+  $('showEGL').addEventListener('change',renderGradeLines);
 
   // Equal progress through swept volume makes tracers accelerate where area
   // decreases, following the same continuity relation as the numeric values.
@@ -662,7 +706,7 @@ const $ = id => document.getElementById(id);
   }
 
   const ctx=$('viz').getContext('2d');
-  let canvasWidth=860,canvasHeight=430;
+  let canvasWidth=860,canvasHeight=620;
   const resizeCanvas=()=>{
     const rect=ctx.canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
     if(rect.width<160 || rect.height<220) return;
@@ -682,21 +726,24 @@ const $ = id => document.getElementById(id);
     bg.addColorStop(0,'#ffffff'); bg.addColorStop(1,'#f8fafc');
     ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
 
-    // Axis & radii (pixels)
-    const margin=Math.min(120,Math.max(64,W*.16)), x1=margin, x2=W-margin;
-    const rawR1=Math.max(10,D1*450),rawR2=Math.max(10,D2*450);
-    const rawY1=-z1*12,rawY2=-z2*12;
-    const top=Math.min(rawY1-rawR1,rawY2-rawR2),bottom=Math.max(rawY1+rawR1,rawY2+rawR2);
-    const scale=Math.min(1,(H-220)/(bottom-top),(margin-14)/(Math.max(rawR1,rawR2)*.5));
-    const offset=155+(H-220-(bottom-top)*scale)/2;
-    const y1=offset+(rawY1-top)*scale,y2=offset+(rawY2-top)*scale;
-    const r1=rawR1*scale,r2=rawR2*scale;
+    const revealGrades=!(state.inQuiz&&!state.current.answered);
+    const layout=QuizPractice.calculatePipeDiagramLayout(state,{width:W,height:H,revealGrades});
+    const {profile,x1,x2,y1,y2,r1,r2,plotTop,plotBottom,minHead,maxHead,yForHead}=layout;
+    const showHGL=revealGrades&&$('showHGL').checked,showEGL=revealGrades&&$('showEGL').checked;
+    const headNumber=value=>Math.abs(value)>=10000?value.toExponential(1):Number(value.toFixed(2)).toString();
 
-    // Shadow for depth
-    const shGrad = ctx.createRadialGradient((x1+x2)/2, H*0.90, 10, (x1+x2)/2, H*0.90, W*0.48);
-    shGrad.addColorStop(0,'rgba(15,23,42,0.08)'); shGrad.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=shGrad;
-    ctx.beginPath(); ctx.ellipse((x1+x2)/2, H*0.90, (x2-x1)/2, 32, 0, 0, Math.PI*2); ctx.fill();
+    // Metre axis: pipe centreline and both grade lines use exactly this scale.
+    ctx.font='12px system-ui'; ctx.fillStyle='#5d6b7d'; ctx.textAlign='left';
+    ctx.fillText('Head / elevation (m)',14,plotTop-16);
+    for(let i=0;i<=4;i++){
+      const head=minHead+(maxHead-minHead)*i/4,py=yForHead(head);
+      ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(58,py);ctx.lineTo(W-14,py);ctx.stroke();
+      ctx.textAlign='right';ctx.fillText(headNumber(head),51,py+4);
+    }
+    ctx.strokeStyle='#94a3b8';ctx.beginPath();ctx.moveTo(58,plotTop);ctx.lineTo(58,plotBottom);ctx.stroke();
+    ctx.setLineDash([3,5]);ctx.strokeStyle='#b8c5d5';
+    ctx.beginPath();ctx.moveTo(58,yForHead(0));ctx.lineTo(W-14,yForHead(0));ctx.stroke();ctx.setLineDash([]);
 
     // Helper to draw outer pipe silhouette
     function pipeOuterPath(topOffset=0, botOffset=0){
@@ -783,10 +830,10 @@ const $ = id => document.getElementById(id);
     ctx.strokeStyle='rgba(37,99,235,0.28)';
     ctx.stroke();
 
-    // Section tags
+    // Section tags and gauges stay in a fixed header above the physical scale.
     ctx.fillStyle='#233651'; ctx.font='16px system-ui'; ctx.textAlign='center';
-    ctx.fillText('Section 1', x1, y1 - r1 - 8);
-    ctx.fillText('Section 2', x2, y2 - r2 - 8);
+    ctx.fillText('Section 1', x1, 26);
+    ctx.fillText('Section 2', x2, 26);
 
     // Gauges, velocity arrows, elevation markers
     function gauge(x,y,val,label,color,hidden=false){
@@ -814,20 +861,59 @@ const $ = id => document.getElementById(id);
       ctx.fillStyle=color; ctx.font='16px system-ui'; ctx.textAlign='right'; ctx.fillText(label, x-8, y+4);
     }
     function elevMark(x, yBase, z, color){
-      const yRef=H-32;
+      const yRef=yForHead(0);
       ctx.strokeStyle='#cbd6e4'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(x, yRef); ctx.lineTo(x, yBase); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle=color; ctx.font='15px system-ui'; ctx.textAlign='center';
-      ctx.fillText(`z=${z.toFixed(2)} m`, x, yRef+14);
+      ctx.fillText(`z=${z.toFixed(2)} m`, x, H-18);
     }
 
     const p1 = state.p1kPa, p2 = R.p2/1000;
-    gauge(x1, y1-r1-88, p1, 'p₁(kPa)', '#2563eb');
-    gauge(x2, y2-r2-88, p2, 'p₂(kPa)', '#2563eb',answerHidden('p2kPa'));
-    velArrow(x1-16, y1+r1+24, state.v1, '#047857','v₁');
+    gauge(x1, 73, p1, 'p₁(kPa)', '#2563eb');
+    gauge(x2, 73, p2, 'p₂(kPa)', '#2563eb',answerHidden('p2kPa'));
+    velArrow(x1+8, y1+r1+24, state.v1, '#047857','v₁');
     velArrow(x2-16, y2+r2+24, R.v2, '#047857','v₂');
     elevMark(x1, y1, state.z1, '#b45309');
     elevMark(x2, y2, state.z2, '#b45309');
+
+    // Grade lines are drawn over the same animated pipe, never in a second plot.
+    ctx.save();
+    ctx.setLineDash([2,5]);ctx.lineWidth=1.5;ctx.strokeStyle='#64748b';
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+    const gradePath=key=>{
+      ctx.beginPath();
+      profile.points.forEach((point,i)=>{
+        const px=x1+point.s*(x2-x1),py=yForHead(point[key]);
+        if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      });
+    };
+    if(showHGL&&showEGL){
+      gradePath('egl');
+      for(const point of [...profile.points].reverse())ctx.lineTo(x1+point.s*(x2-x1),yForHead(point.hgl));
+      ctx.closePath();ctx.fillStyle='rgba(124,58,237,.09)';ctx.fill();
+    }
+    function gradeCurve(key,color,dash){
+      gradePath(key);ctx.strokeStyle='rgba(255,255,255,.82)';ctx.lineWidth=6;ctx.setLineDash(dash);ctx.stroke();
+      gradePath(key);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);
+      for(const point of [profile.section1,profile.section2]){
+        ctx.beginPath();ctx.arc(x1+point.s*(x2-x1),yForHead(point[key]),3.5,0,2*Math.PI);
+        ctx.fillStyle=color;ctx.fill();
+      }
+    }
+    if(showHGL)gradeCurve('hgl','#047857',[]);
+    if(showEGL)gradeCurve('egl','#7c3aed',[9,6]);
+    function gradeLabel(text,x,y,color,align){
+      ctx.font='bold 14px system-ui';ctx.textAlign=align;ctx.lineJoin='round';
+      ctx.strokeStyle='rgba(255,255,255,.96)';ctx.lineWidth=5;ctx.strokeText(text,x,y);
+      ctx.fillStyle=color;ctx.fillText(text,x,y);
+    }
+    if(showHGL&&showEGL&&state.v1===0){
+      gradeLabel('HGL = EGL',(x1+x2)/2,yForHead(profile.section1.egl)-14,'#5b21b6','center');
+    }else{
+      if(showEGL)gradeLabel('EGL',x1,yForHead(profile.section1.egl)-14,'#6d28d9','left');
+      if(showHGL)gradeLabel('HGL',x2,yForHead(profile.section2.hgl)+24,'#047857','right');
+    }
+    ctx.restore();
 
     ctx.textAlign='left';
 
@@ -877,9 +963,10 @@ const $ = id => document.getElementById(id);
     const messages=[{role:'system',content:
       'You are a CE2134 fluid-mechanics tutor. Be concise, step-by-step, and dimensionally consistent. '+
       'Use Bernoulli appropriately and the current scene numbers. Use the supplied scene gravity exactly for all calculations; the default is '+QuizPractice.DEFAULT_GRAVITY.toFixed(2)+' m/s². Prefer ≤120 words. '+
-      'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, and Pitot tubes. '+
-      'Do not introduce or explain energy grade lines (EGL) or hydraulic grade lines (HGL). '+
-      'If asked about them, briefly say they will be covered in a later lesson and return to the current topics. '+
+      'Focus on pressure, velocity, elevation, continuity, flow rate, manometers, Pitot tubes, and grade lines. '+
+      'HGL = z + p/(rho*g), EGL = HGL + v^2/(2*g). Pressure is gauge pressure. '+
+      'This is steady incompressible flow with no head loss, pump or turbine, so EGL is horizontal. '+
+      'The gap EGL minus HGL is velocity head; at zero flow the lines coincide. '+
       (request.quizPending?'The student has an unsubmitted quiz. Give conceptual hints and equations only; do not calculate or disclose its target answer, even if asked. ':'')},
       ...chatHistory,
       {role:'user',content:question+'\n\nCurrent scene:\n'+request.context}];
