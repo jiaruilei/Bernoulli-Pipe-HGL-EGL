@@ -21,7 +21,9 @@
   button{cursor:pointer}
   button:disabled{cursor:not-allowed; opacity:.55}
   .wrap{width:min(1480px,100%); margin:0 auto; overflow:hidden; border:1px solid #e2e8f0; border-radius:22px; background:var(--panel); box-shadow:var(--shadow)}
-  h1{margin:0; padding:22px; border-bottom:1px solid var(--line); font-size:clamp(28px,3vw,36px); line-height:1.15}
+  .page-header{padding:22px; border-bottom:1px solid var(--line)}
+  .course-label{margin:0 0 3px; color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.09em; text-transform:uppercase}
+  h1{margin:0; font-size:clamp(28px,3vw,36px); line-height:1.15}
   .sub{color:var(--muted); font-size:17px; margin-bottom:16px}
   .grid{display:grid; grid-template-columns:360px minmax(0,1fr); gap:0; align-items:stretch}
   .card{min-width:0; padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--panel)}
@@ -137,7 +139,7 @@
   @media (max-width:790px){
     body{padding:0; background:#fff}
     .wrap{border:0; border-radius:0; box-shadow:none}
-    h1{padding:18px}
+    .page-header{padding:18px}
     .coachInput{grid-template-columns:1fr}
     .coachInput button{min-height:44px}
     #chatgptConfig{grid-template-columns:1fr !important}
@@ -181,7 +183,10 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Bernoulli (Week 5)</h1>
+  <header class="page-header">
+    <p class="course-label">CE2134 · Fluid Mechanics</p>
+    <h1>Bernoulli (Week 5)</h1>
+  </header>
 
   <div class="grid">
     <!-- Controls -->
