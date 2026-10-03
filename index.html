@@ -230,9 +230,9 @@
 
       <div class="row">
         <label>Upstream gauge pressure p₁ (kPa)</label>
-        <input id="p1n" type="number" step="1" min="0" max="500" value="30">
+        <input id="p1n" type="number" step="1" min="0" max="500" value="90">
       </div>
-      <input id="p1" type="range" min="0" max="500" step="1" value="30">
+      <input id="p1" type="range" min="0" max="500" step="1" value="90">
 
       <div class="row">
         <label>Elevation z₂ relative to z₁ (m)</label>
@@ -564,7 +564,7 @@ if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)) $('chatEndpoin
   }
 
   const state = {
-    rho:1000, g:QuizPractice.DEFAULT_GRAVITY, D1:0.10, D2:0.05, v1:1.0, p1kPa:30, z1:0.0, z2:2.0,
+    rho:1000, g:QuizPractice.DEFAULT_GRAVITY, D1:0.10, D2:0.05, v1:1.0, p1kPa:90, z1:0.0, z2:2.0,
     style:'glass', // fixed to glass (closed top)
     inQuiz:false, score:0, seen:0, current:{}, selection:null,
     t:0
@@ -600,7 +600,7 @@ if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)) $('chatEndpoin
 
   function resetScene(){
     stopQuiz();
-    Object.assign(state,{rho:1000,g:QuizPractice.DEFAULT_GRAVITY,D1:.10,D2:.05,v1:1,p1kPa:30,z1:0,z2:2});
+    Object.assign(state,{rho:1000,g:QuizPractice.DEFAULT_GRAVITY,D1:.10,D2:.05,v1:1,p1kPa:90,z1:0,z2:2});
     syncSceneControls(); state.score=0; state.seen=0; updateScore(); computeAndRender();
   }
   $('reset').addEventListener('click',resetScene);
